@@ -1,0 +1,2 @@
+// Suppress nullable warnings for stubbed services until implementations are wired.
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1822:Mark members as static", Justification = "Placeholder services")]

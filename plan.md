@@ -1,71 +1,72 @@
-# Modernization Plan – .NET 9 + Web Frontend
+# Modernization Plan – .NET 9 + Web Frontend (Backend-first)
 
 ## Goals
-- Move the WinForms application from .NET Framework 4.6.1 to a supported, modern stack targeting .NET 9 (Windows). 
-- Preserve domain functionality (industry planning, pricing, mining, assets) while improving maintainability, reliability, and security.
+- Move the legacy WinForms app from .NET Framework 4.6.1 to a modern stack on .NET 9 (Windows).
+- Stand up a browser-based React client backed by a .NET Web API while keeping WinForms operable during transition.
 - Reduce global coupling, adopt SDK-style builds, modernize HTTP/ESI flows, and enable CI/testing.
 
 ## Guiding Approach
-- **Incremental, low-risk:** First convert to SDK-style and run on .NET 8 LTS (for tooling stability), then move to .NET 9 once dependencies and runtime are validated.
-- **Dual-track UI:** Keep WinForms running during migration for parity, but add a React SPA front-end that can run in-browser (or packaged via Electron/PWA) backed by a .NET 9 API. VB→C# remains optional if tooling gaps appear.
-- **Windows-only backend:** Target `net9.0-windows` and x64; drop legacy Itanium/x86 unless explicit need arises.
-- **PackageReference-only:** Remove `packages.config` and fold NuGet management into the project file.
+- **Backend-first:** Stand up the ASP.NET Core backend and shared domain library before deep React work; the new stack will fully replace WinForms (no need to keep it functional beyond reference).
+- **Incremental runtime move:** Convert to SDK-style, target `net8.0-windows` first for tooling stability, then `net9.0-windows` once dependencies are validated.
+- **Single UI target:** React SPA becomes the primary UI; VB→C# remains optional if tooling blocks.
+- **Windows-only backend:** Target x64; drop Itanium/x86 unless required.
+- **PackageReference-only:** Remove `packages.config` and fold NuGet into SDK projects.
 
-## Workstream Outline
-1. **Assessment & Baseline**
-   - Capture current build outputs and key user flows; identify critical paths in `frmMain`, ESI auth, DB access, and pricing.
-   - Freeze update channels to avoid runtime auto-updates during migration.
-      - Identify UI views to mirror first in the web client (e.g., blueprint list, manufacturing calc, shopping list, market prices).
+## Workstreams (Backend first, then Frontend)
 
-2. **Project Conversion**
-   - Convert `EVE Isk per Hour.vbproj` to SDK-style (`UseWindowsForms`, `EnableVisualStyles`, icon/manifest wiring).
-   - Migrate NuGet to `PackageReference`; upgrade to latest compatible versions: `Newtonsoft.Json`, SQLite provider (consider `System.Data.SQLite.Core` or `Microsoft.Data.Sqlite`), `LpSolveDotNet` alternative if needed.
-   - Standardize output paths (`bin/Debug|Release`), remove Itanium configs, prefer x64/AnyCPU.
-      - Consider splitting backend into a class library + ASP.NET Core Web API host for the React app.
+### Backend (priority)
+1) **Assessment & Baseline**
+   - Capture current build outputs and key user flows; map critical paths in `frmMain`, ESI auth, DB access, pricing.
+   - Freeze auto-updates during migration; WinForms serves only as reference, not as a supported runtime target post-replacement.
 
-3. **Target Framework Upgrade**
-   - Step to `net8.0-windows` and fix compilation issues (namespaces, API replacements, designer resources).
-   - Resolve WinForms designer artifacts and resource loading; validate all forms open.
-   - Move to `net9.0-windows` after dependency verification.
-      - Expose calculation/ESI/DB access through Web API endpoints (ASP.NET Core minimal APIs or controllers) for React consumption.
+2) **Project Conversion & Framework**
+   - Convert legacy `.vbproj` to SDK-style; migrate to `PackageReference`; standardize x64 outputs.
+   - Step to `net8.0-windows`; fix compile issues; then move to `net9.0-windows`.
+   - Stand up ASP.NET Core Web API host (minimal APIs/controllers) plus shared domain library.
 
-4. **Runtime Modernization**
-   - Replace `HttpWebRequest/WebClient` with `HttpClient` + `async/await`; centralize ESI client with resilient retries and rate-limit handling.
-   - Replace global mutable state with injectable services (settings, DB, ESI, price providers); introduce a lightweight composition root (simple DI container or factory module).
-      - Define a Web API surface (auth, settings, blueprints, manufacturing calc, mining, shopping list, assets, market data) consumed by the React app; apply auth/CSRF/caching policies.
-   - Encapsulate SQLite access behind repository/service classes; consider `Microsoft.Data.Sqlite` with WAL; ensure thread-safe usage without global locks where possible.
-      - Evaluate exposing data via gRPC/REST for the SPA; start with REST + JSON.
-   - Move configuration to `appsettings.json`-style, minimize hard-coded URLs; secure client secrets (if any) via Windows credential storage.
+3) **Runtime Modernization**
+   - Replace `WebClient/HttpWebRequest` with `HttpClient` + `async/await`; centralize ESI client with retry/rate-limit handling.
+   - Introduce DI; extract services for settings, DB, ESI, pricing, manufacturing, mining, shopping list.
+   - Encapsulate SQLite via repositories (`Microsoft.Data.Sqlite` or `System.Data.SQLite`), WAL, parameterized queries.
+   - Define API surface (auth/session, settings, blueprints, manufacturing calc, mining, shopping list, assets, market prices); version endpoints; add CORS/auth.
 
-5. **Domain & UI Refactoring**
-   - Break down `frmMain` into feature-specific controllers/services; reduce code-behind size by extracting domain logic.
-      - For the web client, build feature slices (e.g., Blueprint search, Manufacturing calculator, Price updater) backed by shared domain services in the backend.
-   - Normalize models (blueprints, facilities, prices, shopping items) into dedicated classes with unit-tested logic.
-   - Introduce background worker/Task-based patterns for long-running calculations; improve cancellation tokens vs. flag booleans.
-   - Refresh UX where valuable (responsive layouts, consistent theming) while preserving workflows.
+4) **Domain Refactor & Parity**
+   - Break down `frmMain` logic into reusable domain services; normalize models (blueprints, facilities, prices, shopping items).
+   - Replace flag-based threading with Task + CancellationToken for long-running calcs.
+   - Aim for functional parity in the web/API stack; WinForms parity is not required once replacement is live.
 
-6. **Testing & Quality**
-   - Add unit tests for calculation-heavy modules (industry yield, tax/fee math, shopping list aggregation).
-      - Add API contract tests (backend) and component tests (React) for critical flows.
-   - Add integration tests for ESI/market providers with recorded fixtures.
-   - Wire CI (GitHub Actions) for build + tests on `net8.0-windows`/`net9.0-windows` matrix.
+5) **Testing & CI**
+   - Unit tests for calculations; integration tests for ESI/market providers with fixtures.
+   - API contract tests; GitHub Actions CI for build/test on `net8/9` Windows.
 
-7. **Deployment & Updates**
-   - Replace custom updater with MSIX or ClickOnce for Windows, or modernize existing updater to use HTTPS, signatures, and version manifest checks.
-      - For the SPA, plan static hosting (e.g., GitHub Pages, S3/CloudFront) or bundle into Electron if offline support is required.
-   - Produce signed installers; document migration steps for existing users (DB location, settings carry-over).
+6) **Deployment**
+   - Choose packaging (MSIX/ClickOnce or MSIX + API host); sign artifacts; document settings/DB locations.
+   - Provide migration endpoints for settings/data; enforce API version negotiation.
 
-8. **Data Migration & Compatibility**
-   - Validate SQLite schema compatibility; script migrations if provider changes.
-      - Provide API endpoints for settings/DB migration and enforce version negotiation between SPA and backend.
-   - Ensure user settings migration from legacy storage to new format (JSON); implement import/backfill.
+### Frontend (after backend basics are stable)
+1) **Scaffold & Tooling**
+   - Vite + React + TypeScript; lint/format/test (ESLint, Prettier, Vitest + RTL).
+   - Base API client with `VITE_API_BASE`; CORS alignment with backend.
+
+2) **Feature Slices**
+   - Pages: Dashboard, Blueprint search, Manufacturing calculator, Market prices, Shopping list, Mining.
+   - Shared components: layout shell, data tables, forms, toasts, loading/error states.
+
+3) **Data & State**
+   - React Query for server state; light client state via Zustand/Redux Toolkit if needed.
+   - Type-safe DTOs matching backend contracts.
+
+4) **Testing & Delivery**
+   - Component tests (Vitest/RTL); E2E (Playwright/Cypress) for critical flows.
+   - Build pipeline to emit static assets; hosting choice (static site + API) or Electron/PWA if offline required.
 
 ## Risks / Decisions to Track
 - VB.NET tooling and WinForms designer stability on .NET 9; contingency to convert to C# if blocking.
 - `LpSolveDotNet` availability for `net9.0-windows`; may require swapping to another ILP/LP library or native interop.
 - Auto-update channel: consider disabling during rollout to avoid mixed-runtime installs.
+- API/SPA version skew; enforce versioning and compatibility checks.
 
 ## Success Criteria
-- Project builds and runs on `net9.0-windows` x64 with feature parity for core workflows.
-- CI green on build/test; packaged installer produced from pipeline.
-- Reduced crash/log volume; measurable decrease in global-state usage (services extracted, tests cover core calc logic).
+- Backend: API running on `net9.0-windows` x64 with parity for core calculations, CI green, signed artifacts.
+- Frontend: React SPA consuming versioned API, passing component/E2E tests, deployable as static assets (or Electron/PWA if chosen).
+- Reduced crash/log volume; measurable decrease in global-state usage via extracted services and tests covering core logic.
