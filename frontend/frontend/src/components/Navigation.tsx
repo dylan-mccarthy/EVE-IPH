@@ -79,6 +79,42 @@ const Navigation = ({ onLogout }: NavigationProps) => {
               >
                 Profile
               </button>
+              <button 
+                className={`nav-link ${isActive('/assets')}`}
+                onClick={() => navigate('/assets')}
+              >
+                Assets
+              </button>
+              <button 
+                className={`nav-link ${isActive('/industry')}`}
+                onClick={() => navigate('/industry')}
+              >
+                Industry
+              </button>
+              <button 
+                className={`nav-link ${isActive('/blueprints')}`}
+                onClick={() => navigate('/blueprints')}
+              >
+                Blueprints
+              </button>
+              <button 
+                className={`nav-link ${isActive('/market-orders')}`}
+                onClick={() => navigate('/market-orders')}
+              >
+                Market
+              </button>
+              <button 
+                className={`nav-link ${isActive('/market-data')}`}
+                onClick={() => navigate('/market-data')}
+              >
+                Market Data
+              </button>
+              <button 
+                className={`nav-link ${isActive('/wallet')}`}
+                onClick={() => navigate('/wallet')}
+              >
+                Wallet
+              </button>
             </div>
 
             <div className="nav-user">

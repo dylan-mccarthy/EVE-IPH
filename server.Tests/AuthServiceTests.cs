@@ -69,9 +69,37 @@ public class AuthServiceTests
 
     private sealed class StubCharacterService : ICharacterService
     {
+        public Task<CharacterListResponse> GetCharactersAsync(CancellationToken ct = default)
+        {
+            return Task.FromResult(new CharacterListResponse(new List<CharacterListItem>()));
+        }
+
+        public Task<CharacterDetails> GetCharacterDetailsAsync(long characterId, CancellationToken ct = default)
+        {
+            return Task.FromResult(new CharacterDetails(
+                characterId,
+                "stub",
+                "male",
+                "2020-01-01",
+                1,
+                1,
+                1,
+                null,
+                null,
+                new CorporationInfo(1, "stub corp", null, null, null, null),
+                null,
+                new SkillsSummary(0, 0, 0),
+                new List<string>()));
+        }
+
         public Task<CharacterProfile> GetProfileAsync(long characterId, string accessToken, CancellationToken ct = default)
         {
             return Task.FromResult(new CharacterProfile(characterId, "stub", 0, null, null, null));
+        }
+
+        public Task<CharacterSkillsResponse> GetSkillsAsync(long characterId, string accessToken, CancellationToken ct = default)
+        {
+            return Task.FromResult(new CharacterSkillsResponse(0, 0, new List<SkillGroup>()));
         }
     }
 }

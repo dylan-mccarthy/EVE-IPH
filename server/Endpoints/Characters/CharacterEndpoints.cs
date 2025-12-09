@@ -29,10 +29,17 @@ public static class CharacterEndpoints
             }
         }).WithTags("Characters");
 
-        group.MapPost("/{characterId:long}/sync", async (long characterId, CharacterSyncRequest request, ICharacterService characters, CancellationToken ct) =>
+        group.MapPost("/{characterId:long}/sync", async (long characterId, ICharacterSyncService syncService, CancellationToken ct) =>
         {
-            var profile = await characters.GetProfileAsync(characterId, request.AccessToken, ct);
-            return Results.Ok(profile);
+            try
+            {
+                var result = await syncService.SyncCharacterDataAsync(characterId, ct);
+                return Results.Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new ApiError("sync_failed", ex.Message));
+            }
         }).WithTags("Characters");
 
         group.MapGet("/{characterId:long}/skills", async (long characterId, ITokenRefreshService refreshService, ICharacterService characters, CancellationToken ct) =>

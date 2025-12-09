@@ -9,6 +9,7 @@ using server.Endpoints.Settings;
 using server.Endpoints.Wallet;
 using server.Endpoints.Assets;
 using server.Endpoints.Industry;
+using server.Endpoints.SDE;
 using server.Infrastructure;
 using server.Services.Blueprints;
 using server.Services.Auth;
@@ -19,6 +20,8 @@ using server.Services.Settings;
 using server.Services.Wallet;
 using server.Services.Assets;
 using server.Services.Industry;
+using server.Services.SDE;
+using EveIph.Server.Services.Market;
 
 // Load environment variables from .env file
 DotNetEnv.Env.Load();
@@ -88,16 +91,25 @@ builder.Services.AddHttpClient<IIndustryService, IndustryService>((sp, client) =
     client.BaseAddress = new Uri(options.BaseUrl);
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
+builder.Services.AddHttpClient<IMarketOrdersService, MarketOrdersService>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<EsiOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+});
 
 // Domain services (stubs for now)
 builder.Services.AddScoped<IBlueprintService, BlueprintService>();
 builder.Services.AddScoped<IManufacturingService, ManufacturingService>();
 builder.Services.AddScoped<IMarketService, MarketService>();
+builder.Services.AddScoped<IMarketPriceService, MarketPriceService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
+builder.Services.AddScoped<ISDEService, SDEService>();
 builder.Services.AddSingleton<IAuthService, AuthService>();
 builder.Services.AddSingleton<ITokenStore, TokenStore>();
 builder.Services.AddSingleton<ITokenRefreshService, TokenRefreshService>();
 builder.Services.AddSingleton<ICharacterPersistenceService, CharacterPersistenceService>();
+builder.Services.AddScoped<ICharacterSyncService, CharacterSyncService>();
 
 var app = builder.Build();
 
@@ -119,5 +131,6 @@ app.MapCharacterEndpoints();
 app.MapWalletEndpoints();
 app.MapAssetsEndpoints();
 app.MapIndustryEndpoints();
+app.MapSDEEndpoints();
 
 app.Run();

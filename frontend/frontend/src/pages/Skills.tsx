@@ -28,7 +28,6 @@ const Skills = () => {
   const [error, setError] = useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set());
   const [characterName, setCharacterName] = useState<string>('');
-  const [characterId, setCharacterId] = useState<number>(0);
 
   const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5056';
@@ -42,7 +41,6 @@ const Skills = () => {
 
     const { characterId: id, characterName: name } = JSON.parse(authData);
     setCharacterName(name);
-    setCharacterId(id);
 
     const fetchSkills = async () => {
       try {

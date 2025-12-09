@@ -7,6 +7,7 @@ namespace server.Services.Characters;
 public interface ICharacterPersistenceService
 {
     Task SaveCharacterAsync(long characterId, string characterName, CharacterProfile profile, string scopes, CancellationToken ct = default);
+    Task SaveSkillsAsync(long characterId, CharacterSkillsResponse skills, CancellationToken ct = default);
 }
 
 public sealed class CharacterPersistenceService : ICharacterPersistenceService
@@ -111,5 +112,41 @@ public sealed class CharacterPersistenceService : ICharacterPersistenceService
             
             _logger.LogInformation("Created placeholder corporation record for {CorporationId}", corporationId);
         }
+    }
+
+    public async Task SaveSkillsAsync(long characterId, CharacterSkillsResponse skills, CancellationToken ct = default)
+    {
+        await using var conn = _dbFactory.Create();
+        await conn.OpenAsync(ct);
+
+        // Delete existing skills for this character
+        var deleteSql = "DELETE FROM CHARACTER_SKILLS WHERE CHARACTER_ID = @characterId";
+        await using var deleteCmd = new SqliteCommand(deleteSql, conn);
+        deleteCmd.Parameters.AddWithValue("@characterId", characterId);
+        await deleteCmd.ExecuteNonQueryAsync(ct);
+
+        // Insert all skills
+        var insertSql = @"
+            INSERT INTO CHARACTER_SKILLS (
+                CHARACTER_ID, SKILL_TYPE_ID, SKILL_LEVEL, SKILL_POINTS
+            ) VALUES (
+                @characterId, @skillId, @level, @skillPoints
+            )";
+
+        foreach (var group in skills.SkillGroups)
+        {
+            foreach (var skill in group.Skills)
+            {
+                await using var insertCmd = new SqliteCommand(insertSql, conn);
+                insertCmd.Parameters.AddWithValue("@characterId", characterId);
+                insertCmd.Parameters.AddWithValue("@skillId", skill.SkillId);
+                insertCmd.Parameters.AddWithValue("@level", skill.TrainedSkillLevel);
+                insertCmd.Parameters.AddWithValue("@skillPoints", skill.SkillPointsInSkill);
+                await insertCmd.ExecuteNonQueryAsync(ct);
+            }
+        }
+
+        _logger.LogInformation("Saved {Count} skills for character {CharacterId}", 
+            skills.SkillGroups.Sum(g => g.Skills.Count), characterId);
     }
 }
