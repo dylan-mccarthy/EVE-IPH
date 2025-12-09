@@ -64,13 +64,23 @@ function AuthCallback() {
         
         const data = (await res.json()) as AuthExchange;
         
+        console.log('Auth exchange successful:', {
+          characterId: data.characterId,
+          characterName: data.characterName,
+          hasAccessToken: !!data.accessToken,
+          hasRefreshToken: !!data.refreshToken,
+          expiresAt: data.expiresAtUtc,
+        });
+        
         // Store auth data in localStorage
+        // The backend manages tokens in the database, so we primarily need characterId
+        // But we store tokens for reference and to help detect when re-auth is needed
         localStorage.setItem('eveAuth', JSON.stringify({
           characterId: data.characterId,
           characterName: data.characterName,
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
-          expiresAtUtc: data.expiresAtUtc,
+          expiresAt: data.expiresAtUtc,
         }));
 
         setStatus('Authenticated - Redirecting...');
@@ -78,9 +88,9 @@ function AuthCallback() {
         // Clear query params before redirect
         window.history.replaceState({}, document.title, window.location.pathname);
         
-        // Redirect to skills page
+        // Redirect to character select page
         setTimeout(() => {
-          navigate('/skills');
+          navigate('/characters');
         }, 500);
       } catch (err) {
         setError((err as Error).message);

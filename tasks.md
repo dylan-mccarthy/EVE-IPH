@@ -1,38 +1,169 @@
 # Modernization Tasks (Backend + React SPA)
 
-## Current Status (December 2025)
+## Current Status (December 9, 2025)
 
-### ✅ Completed
+### ✅ Phase 1 Complete: Authentication & Token Management
 - **ASP.NET Core 9 Backend**: Minimal API server running on port 5056
 - **React + Vite Frontend**: Running on port 5173 with TypeScript, React Router
-- **EVE SSO OAuth2**: PKCE flow with SHA256, state management, 12 scopes configured
+- **EVE SSO OAuth2**: PKCE flow with SHA256, state management, 17 scopes configured
 - **Authentication Flow**: Login → callback handling → token storage → error handling
+- **Token Persistence**: Tokens stored in ESI_CHARACTER_DATA table
+- **Token Refresh**: Automatic refresh 5 minutes before expiry, transparent to frontend
+- **Token Management Services**: TokenStore, TokenRefreshService with proper error handling
 - **Skills Display**: Character skills page with ESI integration, database enrichment, grouped display
-- **Database Integration**: SQLite connection via Microsoft.Data.Sqlite, querying SKILLS table
+- **Database Integration**: SQLite connection via Microsoft.Data.Sqlite (ReadWriteCreate mode)
 - **Error Handling**: Structured ApiError responses, graceful auth error recovery
 - **CORS Configuration**: Frontend/backend communication working
 
-### 🚧 In Progress
-- **Token Persistence**: Currently using localStorage (client-side only), need database persistence
-- **Token Refresh**: No automatic refresh implementation yet, tokens expire after 20 minutes
+### ✅ Phase 2 Complete: Character Management & Core UI
+- **Character List Endpoint**: GET /api/characters with all character data
+- **Character Selection UI**: Character selector page with grid layout, portraits, default badges
+- **Character Switching**: Seamless switching between characters with localStorage persistence
+- **Default Character Support**: Auto-select default character on login, visual badges
+- **Character Profile Page**: Detailed profile with skills, wallet, corporation, security status, scopes
+- **Navigation Component**: Top navigation bar with login/logout, character display, route links
+- **Page Structure**: Consistent navigation across Characters/Skills/Profile pages
+- **Skills Page**: Skills grouped by category, total SP displayed, character-specific view
+- **Configuration**: Dual config setup (appsettings.json + appsettings.Development.json)
 
-### 📋 Next Priorities
-1. **Persist tokens to database** - Store access/refresh tokens in CHARACTER_TOKEN_DATA or similar table
-2. **Implement token refresh** - Auto-refresh before expiry, handle refresh failures gracefully
-3. **Character selection** - Support multiple characters, switching between them
-4. **Additional ESI endpoints** - Assets, blueprints, industry jobs, market orders, standings
-5. **Manufacturing calculator** - Core IPH feature with material costs, profit calculations
-6. **Market data integration** - ESI + EVEMarketer price sources with caching
+### ✅ ESI Data Services Implemented
+- **WalletService**: Balance, transactions, journal endpoints with ESI integration
+- **AssetsService**: Character assets with pagination support
+- **IndustryService**: Industry jobs (active/completed) from ESI
+- **Character Enrichment**: Wallet balance displayed on profile page
+- **Scopes Configuration**: 17 scopes including wallet, assets, industry, market orders, corporation data
 
-## Server Implementation Breakdown
-- Implement token refresh middleware/service: check expiry, auto-refresh, handle revocation
-- Add character token persistence: save/load from DB, encrypt sensitive data
-- Finish manufacturing service: pull material requirements, apply skills/facility modifiers, return cost/profit/IPH metrics
-- Finish market service: plug price providers (ESI/EVEMarketer), add region/system scoping, and simple caching
-- Persist settings server-side: load/save to JSON with defaults; allow env override for DB paths and external URLs
-- Harden API contracts: validation, consistent error payloads, and pagination metadata for all list endpoints
-- Add tests: unit for services (blueprints/manufacturing/pricing math) and integration smoke using in-memory SQLite
-- Observability pass: minimal request logging, correlation IDs, and timing around DB calls
+### 🚧 Phase 3: ESI Data Integration & Display (Current Focus)
+
+#### Immediate Next Tasks
+1. **Character Sync Endpoint** - POST /api/characters/{id}/sync to refresh ESI data on demand
+2. **Assets Page** - Display character assets grouped by location with type names
+3. **Industry Jobs Page** - Show active/completed jobs with blueprints, costs, dates
+4. **Market Orders Page** - Display active buy/sell orders with prices and volumes
+5. **Wallet Transactions Page** - Detailed transaction history with filters
+
+#### Blueprint Data Integration
+6. **Blueprints Endpoint** - GET /api/characters/{id}/blueprints with ME/TE/runs from ESI
+7. **Blueprint List Page** - Frontend display of owned blueprints with filters
+8. **Blueprint Search** - Search and filter blueprints by type, ME/TE levels
+9. **Blueprint Management** - Update blueprint data, mark favorites
+
+#### Corporation Data
+10. **Corporation Assets** - GET /api/corporations/{id}/assets (for CEO/Director roles)
+11. **Corporation Wallet** - Corporation wallet balance and divisions
+12. **Corporation Blueprints** - Corporation-owned blueprints access
+
+### 📋 Phase 4: Manufacturing & Pricing System (Planned)
+
+#### Blueprint & Manufacturing Calculations
+- Blueprint search and filtering across character/corporation blueprints
+- Material requirements calculation from INVENTION_MATERIALS and related tables
+- Manufacturing cost calculator (materials + facility fees + taxes)
+- Apply skill bonuses (ME, TE, industry skills) from character skills
+- Facility modifiers (structure bonuses, rigs, system bonuses)
+- Profit/IPH calculations with build time and costs
+- Component building (recursive calculation for T2/T3)
+- Invention calculations for T2 blueprints
+
+#### Market Data Integration
+- ESI market data endpoint integration for real-time prices
+- EVEMarketer API integration as fallback pricing source
+- Region/system scoping for accurate pricing
+- Price caching strategy (in-memory with TTL, consider Redis for distributed)
+- Historical price data for trend analysis
+- Buy/sell price selection (use buy orders for selling, sell orders for buying materials)
+
+### 📋 Phase 5: Mining & Resources (Planned)
+- Ore/ice calculator with volume and value
+- Reprocessing calculations with skills/station bonuses
+- Moon mining profitability calculator
+- Gas harvesting calculations
+- Planetary Interaction (PI) setup and profit calculations
+
+### 📋 Phase 6: Shopping List & Planning (Planned)
+- Multi-item manufacturing planning
+- Shopping list aggregation across multiple builds
+- Buy order placement planning and tracking
+- Hauling optimization (volume, collateral, routes)
+- Production queue management
+
+## Technical Debt & Improvements
+
+### ✅ Completed Architecture Improvements
+- **Service Layer**: Clean separation between endpoints, services, and data access
+- **Error Handling**: Consistent ApiError responses across all endpoints
+- **Logging**: Structured logging with ILogger throughout services
+- **Token Security**: Database-persisted, auto-refresh 5min before expiry
+- **Database Permissions**: ReadWriteCreate mode for SQLite operations
+- **React State Management**: localStorage session persistence, no stale closures
+- **Navigation System**: Consistent UI with Navigation component across all pages
+- **Configuration Management**: Dual config support (Development overrides Production)
+
+### Next Architecture Improvements
+- **Caching Layer**: Add in-memory caching for market data, static game data (consider Redis for distributed)
+- **Rate Limiting**: ESI rate limit handling (100 requests/10s with error backoff)
+- **Background Jobs**: Hangfire or Quartz.NET for periodic updates (market prices, industry jobs, blueprints)
+- **Request Validation**: FluentValidation for endpoint inputs and query parameters
+- **API Versioning**: Add version prefix (/api/v1/) for future compatibility
+- **ESI Error Handling**: Improved retry logic with exponential backoff
+- **Data Synchronization**: Batch sync endpoints for multiple characters
+- **Real-time Updates**: SignalR for live market price updates, job completion notifications
+
+### Testing Strategy
+- Unit tests for calculation logic (manufacturing costs, reprocessing yields, ME/TE bonuses)
+- Integration tests for ESI data fetching with mock responses
+- API contract tests for endpoint consistency
+- Frontend component tests (React Testing Library for character selection, profile, skills)
+- E2E tests for critical flows (Playwright: login → character select → skills view)
+- Performance tests for large blueprint calculations
+
+### Known Issues to Address
+- **Scope Re-authentication**: Users need to logout/login after scope updates in config
+- **ESI Error Messages**: Need better user-facing error messages for ESI failures
+- **Token Expiry Edge Cases**: Handle token revocation during active requests
+- **Large Asset Lists**: Pagination UI for characters with 10,000+ assets
+- **Blueprint Sorting**: Need efficient sorting for large blueprint collections
+
+## Implementation Notes & Lessons Learned
+
+### Configuration Management
+- **appsettings.json vs appsettings.Development.json**: Development config takes precedence in dev environment
+- **Scope Updates**: Both config files must be updated when changing OAuth scopes
+- **Re-authentication Required**: Users must logout/login to receive updated scopes
+
+### Database Operations
+- **SQLite Connection Mode**: Use ReadWriteCreate for all database operations
+- **Connection String**: Important to specify mode explicitly in connection string
+- **Transaction Management**: Consider connection pooling for high-frequency operations
+
+### React State Management
+- **localStorage Persistence**: Essential for session management across page refreshes
+- **Stale Closures**: Use functional updates or proper dependency arrays in useEffect
+- **Key Props**: Always provide unique keys for list items to avoid React warnings
+
+### ESI Integration
+- **Token Management**: Auto-refresh 5 minutes before expiry to avoid interruption
+- **Scope Checking**: Always verify character has required scope before ESI calls
+- **Pagination**: Handle ESI pagination with X-Pages header for large datasets
+- **Error Handling**: ESI can return 502/504, implement retry logic
+
+### UI/UX Best Practices
+- **Navigation Component**: Centralized navigation improves consistency and maintainability
+- **Active Route Highlighting**: Visual feedback improves user orientation
+- **Responsive Design**: Mobile-first approach with breakpoints at 768px and 480px
+- **Loading States**: Always show loading indicators during async operations
+
+## Server Implementation Breakdown (Detailed)
+- ✅ Token refresh service: Auto-refresh 5min before expiry, handle revocation
+- ✅ Character token persistence: Save/load from ESI_CHARACTER_DATA table
+- ✅ Wallet/Assets/Industry services: Pull from ESI with pagination and error handling
+- 🚧 Character sync endpoint: Refresh character data on demand from ESI
+- 🚧 Manufacturing service: Material requirements, skill/facility modifiers, cost/profit/IPH
+- 🚧 Market service: Price providers (ESI/EVEMarketer), region/system scoping, caching
+- 🚧 Settings persistence: Server-side JSON storage with environment overrides
+- 🚧 API validation: FluentValidation for all endpoint inputs
+- 🚧 Testing suite: Unit tests for calculations, integration tests for ESI calls
+- 🚧 Observability: Request logging, correlation IDs, performance metrics
 
 ## 0) Prep & Baseline
 - Document critical user flows and gather current binaries for reference.

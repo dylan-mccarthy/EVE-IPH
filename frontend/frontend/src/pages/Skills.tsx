@@ -28,6 +28,7 @@ const Skills = () => {
   const [error, setError] = useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set());
   const [characterName, setCharacterName] = useState<string>('');
+  const [characterId, setCharacterId] = useState<number>(0);
 
   const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5056';
@@ -39,22 +40,45 @@ const Skills = () => {
       return;
     }
 
-    const { characterId, accessToken, characterName: name } = JSON.parse(authData);
+    const { characterId: id, characterName: name } = JSON.parse(authData);
     setCharacterName(name);
+    setCharacterId(id);
 
     const fetchSkills = async () => {
       try {
+        console.log('Fetching skills for character:', id);
+        // No need to pass accessToken - server handles token refresh automatically
         const response = await fetch(
-          `${API_BASE}/api/characters/${characterId}/skills?accessToken=${encodeURIComponent(accessToken)}`
+          `${API_BASE}/api/characters/${id}/skills`
         );
 
+        console.log('Skills response status:', response.status);
+
+        if (response.status === 401) {
+          console.error('Unauthorized - token may be expired or invalid');
+          // Token expired or invalid, redirect to login
+          localStorage.removeItem('eveAuth');
+          navigate('/');
+          return;
+        }
+
+        if (response.status === 400) {
+          const errorData = await response.json();
+          console.error('Bad request:', errorData);
+          throw new Error(`Bad request: ${JSON.stringify(errorData)}`);
+        }
+
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Failed to fetch skills:', response.status, errorText);
           throw new Error(`Failed to fetch skills: ${response.statusText}`);
         }
 
         const data = await response.json();
+        console.log('Skills data loaded successfully');
         setSkills(data);
       } catch (err) {
+        console.error('Error fetching skills:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
         setLoading(false);
@@ -114,9 +138,10 @@ const Skills = () => {
   return (
     <div className="skills-container">
       <div className="skills-header">
-        <h1>Character Skills</h1>
+        <div className="header-left">
+          <h1>Character Skills - {characterName}</h1>
+        </div>
         <div className="character-info">
-          <div className="character-name">{characterName}</div>
           <div className="sp-summary">
             <span className="sp-label">Total SP:</span>
             <span className="sp-value">{formatSP(skills.totalSp)}</span>
@@ -127,8 +152,8 @@ const Skills = () => {
       </div>
 
       <div className="skills-content">
-        {skills.skillGroups.map((group) => (
-          <div key={group.groupId} className="skill-group">
+        {skills.skillGroups.map((group, groupIndex) => (
+          <div key={`${group.groupId}-${groupIndex}`} className="skill-group">
             <div
               className="skill-group-header"
               onClick={() => toggleGroup(group.groupId)}
@@ -142,8 +167,8 @@ const Skills = () => {
 
             {expandedGroups.has(group.groupId) && (
               <div className="skill-list">
-                {group.skills.map((skill) => (
-                  <div key={skill.skillId} className="skill-item">
+                {group.skills.map((skill, skillIndex) => (
+                  <div key={`${skill.skillId}-${skillIndex}`} className="skill-item">
                     <div className="skill-info">
                       <div className="skill-name">{skill.skillName}</div>
                       <div className="skill-level">Level {skill.trainedSkillLevel}</div>

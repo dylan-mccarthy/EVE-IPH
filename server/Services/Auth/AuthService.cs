@@ -17,14 +17,18 @@ public sealed class AuthService : IAuthService
     private readonly EveSsoOptions _options;
     private readonly IHttpClientFactory _clients;
     private readonly ICharacterService _characters;
+    private readonly ICharacterPersistenceService _characterPersistence;
+    private readonly ITokenStore _tokenStore;
     private readonly ILogger<AuthService> _logger;
     private readonly ConcurrentDictionary<string, PendingAuth> _pending = new();
 
-    public AuthService(IOptions<EveSsoOptions> options, IHttpClientFactory clients, ICharacterService characters, ILogger<AuthService> logger)
+    public AuthService(IOptions<EveSsoOptions> options, IHttpClientFactory clients, ICharacterService characters, ICharacterPersistenceService characterPersistence, ITokenStore tokenStore, ILogger<AuthService> logger)
     {
         _options = options.Value;
         _clients = clients;
         _characters = characters;
+        _characterPersistence = characterPersistence;
+        _tokenStore = tokenStore;
         _logger = logger;
     }
 
@@ -57,7 +61,24 @@ public sealed class AuthService : IAuthService
         var profile = await _characters.GetProfileAsync(verification.CharacterID, token.AccessToken, ct);
         var expiresAt = DateTimeOffset.UtcNow.AddSeconds(token.ExpiresIn);
 
-        _logger.LogInformation("Auth exchange completed for character {CharacterId} ({CharacterName})", 
+        // Save character data to database first
+        await _characterPersistence.SaveCharacterAsync(
+            verification.CharacterID,
+            verification.CharacterName,
+            profile,
+            verification.Scopes,
+            ct);
+
+        // Then save token to database
+        await _tokenStore.SaveTokenAsync(
+            verification.CharacterID, 
+            token.AccessToken, 
+            expiresAt, 
+            token.RefreshToken, 
+            verification.Scopes, 
+            ct);
+
+        _logger.LogInformation("Auth exchange completed for character {CharacterId} ({CharacterName}), character and token saved to database", 
             verification.CharacterID, verification.CharacterName);
         
         return new AuthExchangeResponse(verification.CharacterID, verification.CharacterName, token.AccessToken, expiresAt, token.RefreshToken, profile);

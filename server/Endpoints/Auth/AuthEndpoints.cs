@@ -32,6 +32,40 @@ public static class AuthEndpoints
             }
         }).WithTags("Auth");
 
+        group.MapPost("/refresh/{characterId:long}", async (long characterId, ITokenRefreshService refreshService, CancellationToken ct) =>
+        {
+            var result = await refreshService.RefreshTokenIfNeededAsync(characterId, ct);
+            
+            if (!result.Success)
+            {
+                return Results.BadRequest(new ApiError("refresh_failed", result.Error ?? "Failed to refresh token"));
+            }
+
+            return Results.Ok(new
+            {
+                accessToken = result.AccessToken,
+                expiresAt = result.ExpiresAt
+            });
+        }).WithTags("Auth");
+
+        group.MapGet("/characters/{characterId:long}/token", async (long characterId, ITokenStore tokenStore, ITokenRefreshService refreshService, CancellationToken ct) =>
+        {
+            // Get token and refresh if needed
+            var refreshResult = await refreshService.RefreshTokenIfNeededAsync(characterId, ct);
+            
+            if (!refreshResult.Success)
+            {
+                return Results.NotFound(new ApiError("token_not_found", "No valid token found for this character"));
+            }
+
+            return Results.Ok(new
+            {
+                characterId,
+                accessToken = refreshResult.AccessToken,
+                expiresAt = refreshResult.ExpiresAt
+            });
+        }).WithTags("Auth");
+
         return routes;
     }
 }

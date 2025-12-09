@@ -13,10 +13,54 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
 .skills-header h1 {
-  margin: 0 0 15px 0;
+  margin: 0;
   color: #fff;
   font-size: 2em;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-btn {
+  padding: 0.5rem 1rem;
+  background: rgba(78, 204, 163, 0.2);
+  color: #4ecca3;
+  border: 1px solid #4ecca3;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover {
+  background: rgba(78, 204, 163, 0.3);
+  transform: translateY(-1px);
+}
+
+.switch-character-btn {
+  padding: 0.5rem 1rem;
+  background: rgba(78, 204, 163, 0.2);
+  color: #4ecca3;
+  border: 1px solid #4ecca3;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.switch-character-btn:hover {
+  background: rgba(78, 204, 163, 0.3);
+  transform: translateY(-1px);
 }
 
 .character-info {

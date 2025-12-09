@@ -11,6 +11,10 @@ obj/
 .vs/
 .vscode/
 
+## Environment variables (sensitive data)
+.env
+**/.env
+
 ## Logs/cache
 *.log
 *.cache
