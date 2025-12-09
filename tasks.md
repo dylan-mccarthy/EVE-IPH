@@ -1,12 +1,38 @@
 # Modernization Tasks (Backend + React SPA)
 
-## Server Implementation Breakdown (current)
-- Finish manufacturing service: pull material requirements, apply skills/facility modifiers, return cost/profit/IPH metrics.
-- Finish market service: plug price providers (ESI/EVEMarketer), add region/system scoping, and simple caching.
-- Persist settings server-side: load/save to JSON with defaults; allow env override for DB paths and external URLs.
-- Harden API contracts: validation, consistent error payloads, and pagination metadata for all list endpoints.
-- Add tests: unit for services (blueprints/manufacturing/pricing math) and integration smoke using in-memory SQLite.
-- Observability pass: minimal request logging, correlation IDs, and timing around DB calls.
+## Current Status (December 2025)
+
+### ✅ Completed
+- **ASP.NET Core 9 Backend**: Minimal API server running on port 5056
+- **React + Vite Frontend**: Running on port 5173 with TypeScript, React Router
+- **EVE SSO OAuth2**: PKCE flow with SHA256, state management, 12 scopes configured
+- **Authentication Flow**: Login → callback handling → token storage → error handling
+- **Skills Display**: Character skills page with ESI integration, database enrichment, grouped display
+- **Database Integration**: SQLite connection via Microsoft.Data.Sqlite, querying SKILLS table
+- **Error Handling**: Structured ApiError responses, graceful auth error recovery
+- **CORS Configuration**: Frontend/backend communication working
+
+### 🚧 In Progress
+- **Token Persistence**: Currently using localStorage (client-side only), need database persistence
+- **Token Refresh**: No automatic refresh implementation yet, tokens expire after 20 minutes
+
+### 📋 Next Priorities
+1. **Persist tokens to database** - Store access/refresh tokens in CHARACTER_TOKEN_DATA or similar table
+2. **Implement token refresh** - Auto-refresh before expiry, handle refresh failures gracefully
+3. **Character selection** - Support multiple characters, switching between them
+4. **Additional ESI endpoints** - Assets, blueprints, industry jobs, market orders, standings
+5. **Manufacturing calculator** - Core IPH feature with material costs, profit calculations
+6. **Market data integration** - ESI + EVEMarketer price sources with caching
+
+## Server Implementation Breakdown
+- Implement token refresh middleware/service: check expiry, auto-refresh, handle revocation
+- Add character token persistence: save/load from DB, encrypt sensitive data
+- Finish manufacturing service: pull material requirements, apply skills/facility modifiers, return cost/profit/IPH metrics
+- Finish market service: plug price providers (ESI/EVEMarketer), add region/system scoping, and simple caching
+- Persist settings server-side: load/save to JSON with defaults; allow env override for DB paths and external URLs
+- Harden API contracts: validation, consistent error payloads, and pagination metadata for all list endpoints
+- Add tests: unit for services (blueprints/manufacturing/pricing math) and integration smoke using in-memory SQLite
+- Observability pass: minimal request logging, correlation IDs, and timing around DB calls
 
 ## 0) Prep & Baseline
 - Document critical user flows and gather current binaries for reference.

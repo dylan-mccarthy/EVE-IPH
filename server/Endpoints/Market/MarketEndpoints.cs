@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using server.Models;
 using server.Services.Market;
 
@@ -19,8 +20,13 @@ public static class MarketEndpoints
         return routes;
     }
 
-    private static async Task<Ok<MarketPricesResponse>> GetPrices(IMarketService service, [AsParameters] MarketPricesRequest request)
+    private static async Task<Ok<MarketPricesResponse>> GetPrices(
+        [FromServices] IMarketService service,
+        [FromQuery(Name = "typeIds")] long[] typeIds,
+        [FromQuery] string region = "The Forge",
+        [FromQuery(Name = "system")] string systemName = "Jita")
     {
+        var request = new MarketPricesRequest(typeIds, region, systemName);
         var result = await service.GetPricesAsync(request);
         return TypedResults.Ok(result);
     }
