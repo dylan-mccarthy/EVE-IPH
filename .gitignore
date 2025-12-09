@@ -1,26 +1,47 @@
-bin/*
-obj/*
-Service References/*
+## Build output
+bin/
+obj/
+**/bin/
+**/obj/
+
+## IDE/user-specific
 *.suo
 *.user
-EVE Isk per Hour.vbproj
 *.vsidx
-*.json
-*.json
+.vs/
+.vscode/
+
+## Logs/cache
+*.log
+*.cache
+
+## Packages
+packages/
+
+## Data and temp assets
+db/
+*.sqlite
+*.db
+*.pdb
+
+## Frontend
+client/node_modules/
+client/dist/
+client/.vite/
+
+## Local config overrides
+*.local.json
+server/Properties/launchSettings.json
+
+## Legacy updater artifacts
 EVE-IPH-Update-Program/obj/x86/Debug/EVEIPH Updater.exe
 EVE-IPH-Update-Program/obj/x86/Debug/EVEIPH Updater.pdb
 EVE-IPH-Update-Program/obj/x86/Debug/EVEIPH Updater.vbproj.AssemblyReference.cache
 EVE-IPH-Update-Program/obj/x86/Debug/EVEIPH Updater.vbproj.FileListAbsolute.txt
+EVE-IPH-Update-Program/obj/x86/Debug/DesignTimeResolveAssemblyReferencesInput.cache
 EVEIPH SQLite DLL Updater/obj/Debug/EVEIPH SQLite DLL Updater.exe
 EVEIPH SQLite DLL Updater/obj/Debug/EVEIPH SQLite DLL Updater.pdb
 EVEIPH SQLite DLL Updater/obj/Debug/EVEIPH SQLite DLL Updater.vbproj.AssemblyReference.cache
+EVEIPH SQLite DLL Updater/obj/Debug/DesignTimeResolveAssemblyReferencesInput.cache
 Root Directory/EVEIPH SQLite DLL Updater.exe
 Root Directory/EVEIPH SQLite DLL Updater.pdb
-*.cache
-EVEIPH SQLite DLL Updater/obj/Debug/DesignTimeResolveAssemblyReferencesInput.cache
-EVEIPH SQLite DLL Updater/obj/Debug/EVEIPH SQLite DLL Updater.vbproj.AssemblyReference.cache
-*.cache
-*.cache
-EVEIPH SQLite DLL Updater/obj/Debug/EVEIPH SQLite DLL Updater.vbproj.AssemblyReference.cache
-EVE-IPH-Update-Program/obj/x86/Debug/DesignTimeResolveAssemblyReferencesInput.cache
-EVEIPH SQLite DLL Updater/obj/Debug/DesignTimeResolveAssemblyReferencesInput.cache

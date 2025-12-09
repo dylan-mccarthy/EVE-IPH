@@ -1,5 +1,13 @@
 # Modernization Tasks (Backend + React SPA)
 
+## Server Implementation Breakdown (current)
+- Finish manufacturing service: pull material requirements, apply skills/facility modifiers, return cost/profit/IPH metrics.
+- Finish market service: plug price providers (ESI/EVEMarketer), add region/system scoping, and simple caching.
+- Persist settings server-side: load/save to JSON with defaults; allow env override for DB paths and external URLs.
+- Harden API contracts: validation, consistent error payloads, and pagination metadata for all list endpoints.
+- Add tests: unit for services (blueprints/manufacturing/pricing math) and integration smoke using in-memory SQLite.
+- Observability pass: minimal request logging, correlation IDs, and timing around DB calls.
+
 ## 0) Prep & Baseline
 - Document critical user flows and gather current binaries for reference.
 - Freeze auto-updates during migration; capture current settings/DB locations.
