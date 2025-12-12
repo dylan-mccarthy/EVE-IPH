@@ -42,3 +42,51 @@
 - Security/network: custom localhost listener and manual PKCE; limited resilience/logging around API failures.
 - Testing coverage unknown; no tests discovered.
 - Large monolithic `frmMain` (~20k lines) mixes UI, domain, and data concerns.
+
+---
+
+## Modernization Target (Web Replacement)
+The modernization effort is targeting a full replacement of the WinForms UI with:
+- **Backend:** ASP.NET Core minimal APIs + SQLite
+- **Frontend:** React SPA (Vite + TypeScript)
+
+WinForms remains reference-only while parity is reached.
+
+## Modernization Checkpoint (December 11, 2025)
+
+### What’s Implemented (Web)
+- **Auth + Character data (Phase 1–3):** SSO/PKCE, token persistence/refresh, characters + skills/assets/industry/market orders/wallet pages.
+- **Blueprint search/details (Phase 4.1):** search and detailed blueprint view with activities/materials/products.
+- **Market prices cache + management UI (Phase 4.2):** cached price table in SQLite, Market Data page for manual region sync (The Forge / Jita default).
+- **Manufacturing calculator pricing (Phase 4.3 partial):** Blueprints calculator reads cached prices only and computes component cost/product value/profit.
+- **Component → raw expansion (Phase 4.3 partial):** backend endpoint calculates raw-material breakdown by recursively expanding manufacturable components.
+
+### Key Decisions / Tradeoffs
+- **Manual market refresh only:** calculator pages never trigger ESI refresh; Market Data page is the single explicit refresh workflow.
+- **Batch market sync behavior:** region “all orders” pagination is fast, but observed to frequently omit buy orders; cached `buyPrice` can be 0. Sell prices are used for manufacturing material acquisition costs.
+
+### Parity Mapping (Legacy → Web)
+This is the functional map we’re using to replace the WinForms system.
+
+**Manufacturing**
+- Legacy includes many outputs/config knobs (example surface: profit %, ISK/hr, ROI, taxes/broker fees, installation/job fees, facility/system index bonuses, price trend/SVR, invention costs).
+- Web currently covers: blueprint lookup + material lists + cached sell-price costing + raw breakdown backend.
+- Web still needs: time/fees/taxes, facility/system index modeling, invention/decryptors, SVR/price trend, queue/shopping list integration.
+
+**Market pricing**
+- Legacy uses multiple providers and/or ESI strategies to get prices.
+- Web currently covers: cached prices + manual sync UI + batch region-order fetch.
+- Web still needs (optional): alternate price providers (EVEMarketer/Fuzzworks) if we want fallback sources, and/or a strategy for buy-order pricing.
+
+**Mining / Reprocessing**
+- Legacy has dedicated reprocessing/mining workflows (e.g., reprocessing plant UI, ore conversion).
+- Web: not started.
+
+**Shopping lists / Planning**
+- Legacy has shopping list building, exports, and asset-aware views.
+- Web: not started.
+
+## Source-of-Truth Docs
+- `tasks.md`: detailed phase checklist and “what’s next” items.
+- `plan.md`: high-level replacement plan and parity milestones.
+- This file: legacy scope reference plus checkpoint mapping.

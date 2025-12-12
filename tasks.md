@@ -126,10 +126,10 @@ The manufacturing calculator is the core feature of EVE-IPH. It calculates mater
      - TE (Time Efficiency) 0-20: Ready for time calculations
      - Runs per BP, Number of BPs, Production Lines
      - Total Units (highlighted) - multiplies material quantities
-   - **Cost Summary Cards**: Component Cost, Raw Cost, Market Price, Profit (all "TBD" pending prices)
+    - **Cost Summary Cards**: Component Material Cost, Market Price, Profit (from cached market prices); Raw Material Cost still mirrors components (raw breakdown UI is next)
    - **Two-Column Materials Layout**:
      - Component Materials (left): Direct manufacturing inputs
-     - Raw Materials (right): Same as components for now (will break down components later)
+       - Raw Materials (right): Same as components for now (will be replaced by recursive breakdown)
      - Both showing Material, Qty (adjusted for ME + Total Units), Cost/Item, Total Cost
    - **Real-time ME Calculations**: `Math.ceil(baseQty * (1 - ME * 0.01) * totalUnits)`
    - **Collapsible Other Activities**: Invention, Research, etc. hidden by default
@@ -231,369 +231,65 @@ CREATE TABLE IF NOT EXISTS MARKET_PRICES (
 CREATE INDEX idx_market_prices_expires ON MARKET_PRICES(EXPIRES_AT);
 ```
 
-##### Phase 4.3: Blueprint Manufacturing Cost Integration (NEXT)
+##### Phase 4.3: Blueprint Manufacturing Cost Integration 🚧 IN PROGRESS
 
-**Goal**: Wire market prices into Blueprints.tsx manufacturing calculator for real cost calculations
+**Goal**: Make the backend the source of truth for manufacturing calculations (materials/time/fees/profit), and convert the React calculator into a thin client that renders server-calculated results.
 
-#### Manufacturing Calculator Components
+**Already implemented**
+- Blueprints UI reads cached prices only (no ESI refresh from the calculator)
+- Component material cost, product value, and profit calculated from cached Jita sell prices
+- Backend raw-material breakdown endpoint: `POST /api/blueprints/{blueprintId}/raw-materials`
 
-##### 1. Blueprint Search & Selection
-- Search blueprints by name/type across owned blueprints (character + corporation if applicable)
-- Filter by tech level (T1, T2, T3), category, group
-- Display blueprint ME/TE levels, number of runs, location
-- Show whether owned or need to calculate from market blueprint
-- Quick access to recently used blueprints
+**Next (Server-side Calculations Migration)**
 
-##### 2. Material Requirements Calculator
-**Backend Service: MaterialsCalculationService**
-```csharp
-// Calculate base materials from INDUSTRY_ACTIVITY_MATERIALS
-// Apply ME (Material Efficiency) reduction: roundup(base_quantity * (1 - ME/100))
-// Apply skill bonuses (Advanced Industry, specific industry skills)
-// Handle recursive calculations for components (T2/T3 items)
-// Track material tree depth to prevent circular dependencies
-```
+1. 🚧 **Define the server manufacturing contract (DTOs)**
+    - Expand `ManufacturingRequest` beyond `(BlueprintId, Runs, System, Region)` to include the calculator inputs used by the UI:
+       - ME, TE
+       - Total units (or output multiplier)
+       - Runs per BP + number of BPs (or a normalized “total runs”)
+       - Production lines (for time/IPH)
+       - RegionId (pricing lookup region)
+    - Expand `ManufacturingResponse` to return data the UI needs without client math:
+       - Component materials breakdown (per material: typeId, name, adjustedQty, unitPrice, totalCost)
+       - Raw materials breakdown (same shape)
+       - Totals: componentTotalCost, rawTotalCost, productValue, profit
+       - Optional: warnings (missing prices, stale prices)
 
-**Calculations:**
-- Base materials from database
-- ME reduction: `Math.Ceiling(baseQty * (1 - ME / 100.0))`
-- Advanced Industry skill: 1% per level reduction
-- Component manufacturing: recursive calculation with own blueprints
+2. 🚧 **Implement MVP server calculations (match current UI behavior first)**
+    - Implement `ManufacturingService.CalculateAsync` to:
+       - Load blueprint manufacturing materials/products
+       - Apply the same *temporary* ME math currently in the UI (1% per ME level) so results match immediately
+       - Multiply quantities by total units
+       - Use cached market prices only (do not trigger refresh from this endpoint)
+       - Compute component total cost + product value + profit
 
-##### 3. Manufacturing Cost Calculator
-**Backend Service: ManufacturingCostService**
-```csharp
-// Material costs from market prices (buy orders for materials)
-// Facility fees = base_cost * system_cost_index * structure_bonus * tax_rate
-// Manufacturing tax (default 10% at NPC stations)
-// Installation cost based on estimated item value
-```
+3. 🚧 **Wire raw-material breakdown into manufacturing response**
+    - Reuse `BlueprintService.GetRawMaterialsAsync` (or move the shared logic into a helper) so `ManufacturingResponse` can include both:
+       - component breakdown (direct mats)
+       - raw breakdown (recursive)
+    - Ensure raw-vs-components totals are computed using the same cached-price rules
 
-**Cost Components:**
-- Material costs (from market or custom prices)
-- System cost index multiplier (from INDUSTRY_SYSTEMS_COST_INDICIES)
-- Structure bonuses (Raitaru: -1%, Azbel: -2%, Sotiyo: -4%)
-- Structure rigs (T1: -2.4%, T2: -2.1% per rig, max 3)
-- Corporation tax rate
-- Installation fees
+4. 🚧 **Convert the React calculator to render server results**
+    - Update `Blueprints.tsx` to call `POST /api/manufacturing/calculate` whenever:
+       - selected blueprint changes
+       - ME/TE/runs/lines/units inputs change
+    - Remove/retire client-side calculation functions (`calculateMaterialQuantity`, component/product/profit totals)
+    - Keep the existing “missing prices” messaging, but drive it from server warnings where possible
 
-##### 4. Build Time Calculator
-**Backend Service: BuildTimeService**
-```csharp
-// Base time from INDUSTRY_ACTIVITY_MATERIALS
-// Apply TE (Time Efficiency): base_time * (1 - TE/100)
-// Apply skill bonuses:
-//   - Industry skill: 4% per level
-//   - Advanced Industry: 3% per level  
-//   - Specific industry skills: varies per activity
-// Apply structure bonuses (Raitaru/Azbel/Sotiyo, rigs)
-// Apply implant bonuses
-```
+5. 🚧 **Legacy parity upgrades (incremental, verified steps)**
+    - **Material quantity parity**: replace the temporary “1% per ME” rule with the legacy-style rounding logic used throughout shopping/manufacturing:
+       - distribute runs across BPs when relevant
+       - compute per-BP quantities using legacy rounding (e.g., `max(runs, ceil(round(runs * baseQty * MEBonus, 2)))`)
+    - **Facility + system inputs**: add system cost index + facility multipliers (material/time/cost) to the server calculation
+    - **Fees/taxes**: implement sales tax + broker fee logic server-side (legacy: Accounting, Broker Relations, standings, minimum fee)
+    - **Time/IPH**: compute build time using TE + facility time multiplier + number of lines; derive IPH from server totals
 
-**Time Modifiers:**
-- TE reduction: `baseTime * (1 - TE / 100.0)`
-- Industry skill: 4% per level
-- Advanced Industry: 3% per level
-- Structure time bonus (Raitaru: -15%, Azbel: -20%, Sotiyo: -25%)
-- Implants (various, from character data)
-
-##### 5. Invention Calculator (for T2 blueprints)
-**Backend Service: InventionService**
-```csharp
-// Base probability from INDUSTRY_ACTIVITY_PROBABILITIES
-// Apply skill bonuses (Science skills: 1% per level each, encryption: 2% per level)
-// Apply decryptor modifiers (probability multiplier, run/ME/TE modifiers)
-// Calculate invention materials cost (datacores, data interfaces)
-// Calculate average T2 BPC cost = invention_cost / (success_rate * runs_per_success)
-```
-
-**Invention Mechanics:**
-- Base success probability from database
-- Science skills (2 required): +1% per level each
-- Encryption Methods: +2% per level
-- Decryptors: modify probability, runs, ME, TE
-- Calculate per-run invention cost for T2 items
-
-##### 6. Profit & IPH Calculator
-**Backend Service: ProfitCalculationService**
-```csharp
-// Revenue = sell_price * quantity * (1 - sales_tax - broker_fee)
-// Profit = revenue - total_cost
-// ISK per hour = profit / (build_time_seconds / 3600)
-// ROI = (profit / total_cost) * 100
-```
-
-**Profit Metrics:**
-- Total cost (materials + fees + taxes)
-- Revenue (sell orders - broker fees - sales tax)
-- Raw profit and profit margin %
-- ISK per hour (profit / build time)
-- Return on investment (ROI)
-
+6. 📋 **Validation**
+    - Add focused unit tests for:
+       - material rounding rules
+       - fees/taxes calculations
+       - stable outputs for a small known blueprint across ME/units changes
 ---
-
-## Phase 4.2: Market Price Integration (IN PROGRESS)
-
-**Goal**: Fetch and cache market prices from ESI to populate cost calculations in manufacturing calculator
-
-### Implementation Plan
-
-#### 1. Backend Market Price Service
-
-**Create IMarketPriceService Interface**:
-```csharp
-public interface IMarketPriceService
-{
-    Task<MarketPrice?> GetPriceAsync(int typeId, int regionId = 10000002);
-    Task<Dictionary<int, MarketPrice>> GetPricesAsync(IEnumerable<int> typeIds, int regionId = 10000002);
-    Task RefreshPricesAsync(IEnumerable<int> typeIds, int regionId = 10000002);
-}
-```
-
-**MarketPrice Model**:
-```csharp
-public record MarketPrice(
-    int TypeId,
-    int RegionId,
-    decimal BuyPrice,      // Highest buy order
-    decimal SellPrice,     // Lowest sell order
-    long Volume,           // 24h volume
-    DateTime LastUpdated,
-    DateTime ExpiresAt
-);
-```
-
-**ESI Endpoint**: `GET https://esi.evetech.net/latest/markets/{region_id}/orders/?type_id={type_id}`
-- Default region: The Forge (Jita) - region ID 10000002
-- Cache for 1 hour (respect ESI cache headers)
-- Filter orders by is_buy_order true/false
-- Calculate: highest buy = max(price where is_buy_order=true)
-- Calculate: lowest sell = min(price where is_buy_order=false)
-
-#### 2. Database Schema for Price Cache
-
-```sql
-CREATE TABLE MARKET_PRICES (
-  TYPE_ID INTEGER PRIMARY KEY,
-  REGION_ID INTEGER,
-  BUY_PRICE REAL,
-  SELL_PRICE REAL,
-  VOLUME INTEGER,
-  LAST_UPDATED TEXT,
-  EXPIRES_AT TEXT
-);
-
-CREATE INDEX idx_market_prices_expires ON MARKET_PRICES(EXPIRES_AT);
-```
-
-#### 3. REST API Endpoints
-
-- `POST /api/market/prices/refresh` - Force refresh prices for given type IDs
-  - Request: `{ "typeIds": [34, 35, 36], "regionId": 10000002 }`
-  - Response: `{ "updated": 3, "failed": 0 }`
-
-- `GET /api/market/prices?typeIds=34,35,36&regionId=10000002` - Get cached prices
-  - Response: `{ "prices": { "34": { buyPrice: 5.5, sellPrice: 6.0, ... }, ... } }`
-
-- `GET /api/market/prices/{typeId}?regionId=10000002` - Single price lookup
-  - Response: `{ "typeId": 34, "buyPrice": 5.5, "sellPrice": 6.0, ... }`
-
-#### 4. Frontend Integration
-
-**Update api.ts**:
-```typescript
-export interface MarketPrice {
-  typeId: number;
-  regionId: number;
-  buyPrice: number;
-  sellPrice: number;
-  volume: number;
-  lastUpdated: string;
-  expiresAt: string;
-}
-
-export const market = {
-  getPrices: async (typeIds: number[], regionId = 10000002) => 
-    api.get<{prices: Record<number, MarketPrice>}>('/market/prices', { typeIds: typeIds.join(','), regionId }),
-  
-  refreshPrices: async (typeIds: number[], regionId = 10000002) =>
-    api.post<{updated: number, failed: number}>('/market/prices/refresh', { typeIds, regionId })
-};
-```
-
-**Update Blueprints.tsx**:
-- Add `marketPrices` state: `useState<Record<number, MarketPrice>>({})`
-- Fetch prices after blueprint loads: extract all material type IDs, call `market.getPrices()`
-- Add "Update Prices" button with loading spinner
-- Display prices in material tables: Cost/Item column shows sellPrice
-- Calculate Total Cost: `(adjustedQty * sellPrice).toFixed(2)`
-- Update cost summary cards with real totals
-
-#### 5. Price Update Strategy
-
-**Cache Expiration**: 1 hour (3600 seconds)
-- Store `expiresAt = lastUpdated + 3600s`
-- Check `expiresAt < DateTime.Now` before returning cached price
-- If expired, fetch fresh data from ESI
-
-**Rate Limiting**: ESI allows ~150 requests/second
-- Batch requests: fetch all materials in single call per type
-- Use concurrent requests with SemaphoreSlim(10) for throttling
-- Cache aggressively to minimize ESI calls
-
-**Error Handling**:
-- If ESI fails, return last cached price (even if expired)
-- Log errors but don't break calculator
-- Show "Price unavailable" if no cache exists
-
----
-
-#### Manufacturing Calculator UI (React)
-
-**Main Calculator Page** (`/manufacturing`):
-```
-┌─────────────────────────────────────────────┐
-│ Manufacturing Calculator                     │
-├─────────────────────────────────────────────┤
-│ Blueprint Search: [____________] [Search]    │
-│ Tech Level: [All ▼] Category: [All ▼]       │
-│                                              │
-│ Selected: Raven Blueprint (ME: 10, TE: 20)  │
-│ Runs: [1] Location: [Jita 4-4 ▼]           │
-│                                              │
-│ ┌─ Materials ──────────────────────────┐    │
-│ │ Tritanium         1,234,567          │    │
-│ │ Pyerite             456,789          │    │
-│ │ ... (show/hide components tree)       │    │
-│ └──────────────────────────────────────┘    │
-│                                              │
-│ ┌─ Costs & Profit ─────────────────────┐    │
-│ │ Material Cost:     123.4M ISK        │    │
-│ │ Installation:        5.2M ISK        │    │
-│ │ Total Cost:        128.6M ISK        │    │
-│ │                                       │    │
-│ │ Sell Price:        145.0M ISK        │    │
-│ │ Profit:             16.4M ISK        │    │
-│ │ Margin:             12.7%            │    │
-│ │ Build Time:         2h 34m           │    │
-│ │ ISK/Hour:           6.4M             │    │
-│ └──────────────────────────────────────┘    │
-│                                              │
-│ [Calculate] [Save to Queue] [Shopping List] │
-└─────────────────────────────────────────────┘
-```
-
-#### Backend API Endpoints
-
-```csharp
-// Blueprint search
-GET /api/blueprints/search?query={name}&techLevel={level}&category={cat}
-  → Returns: BlueprintSearchResponse { items, total, page, pageSize }
-
-// Get blueprint details
-GET /api/blueprints/{blueprintTypeId}
-  → Returns: BlueprintDetails { typeId, name, activities[], materials[], products[] }
-
-// Calculate manufacturing
-POST /api/manufacturing/calculate
-  Body: {
-    blueprintTypeId: number,
-    runs: number,
-    materialEfficiency: number,
-    timeEfficiency: number,
-    facilityType: string,
-    systemId: number,
-    characterId: number,
-    customPrices?: { [typeId: number]: number }
-  }
-  → Returns: ManufacturingResult {
-    materials: MaterialRequirement[],
-    materialCost: number,
-    installationCost: number,
-    totalCost: number,
-    buildTime: number,
-    sellPrice: number,
-    profit: number,
-    profitMargin: number,
-    iskPerHour: number
-  }
-```
-
-#### Implementation Plan
-
-**Phase 4.1: Blueprint Data Service**
-1. ✅ Create BlueprintService with database queries for blueprint data
-2. ⬜ Create endpoints for blueprint search and details
-3. ⬜ Add blueprint list page in React (show owned blueprints)
-
-**Phase 4.2: Material Calculations**
-4. ⬜ Implement MaterialsCalculationService
-   - Query INDUSTRY_ACTIVITY_MATERIALS
-   - Apply ME reduction formula
-   - Apply skill bonuses from character data
-   - Handle recursive component calculations
-5. ⬜ Create unit tests for material calculations
-
-**Phase 4.3: Cost & Time Calculations**  
-6. ⬜ Implement BuildTimeService (TE, skills, facility bonuses)
-7. ⬜ Implement ManufacturingCostService (materials, fees, taxes)
-8. ⬜ Implement market price integration (ESI market data)
-9. ⬜ Create unit tests for cost/time calculations
-
-**Phase 4.4: Manufacturing Calculator Orchestration**
-10. ⬜ Create ManufacturingCalculatorService orchestrating all calculations
-11. ⬜ Implement POST /api/manufacturing/calculate endpoint
-12. ⬜ Add integration tests with realistic scenarios
-
-**Phase 4.5: Frontend Manufacturing Calculator**
-13. ⬜ Create Manufacturing page with blueprint search
-14. ⬜ Add material list display with tree view for components
-15. ⬜ Add cost breakdown and profit display
-16. ⬜ Add facility selection and settings
-17. ⬜ Connect to backend calculation endpoint
-
-**Phase 4.6: Invention System (T2 Manufacturing)**
-18. ⬜ Implement InventionService for T2 blueprint calculations
-19. ⬜ Add invention cost to manufacturing calculator
-20. ⬜ Add decryptor selection UI
-
-#### Legacy VB Code References
-For implementation guidance, refer to:
-- `ManufacturingFacility.vb` - Facility bonuses and calculations
-- `IndustryCalcFunctions.vb` - Core manufacturing math
-- `frmManufacturingTab.vb` - UI layout and user flows
-- `CalculateBlueprint()` functions - Main calculation orchestration
-
-#### Blueprint Data Integration
-6. **Blueprints Endpoint** - GET /api/characters/{id}/blueprints with ME/TE/runs from ESI
-7. **Blueprint List Page** - Frontend display of owned blueprints with filters
-8. **Blueprint Search** - Search and filter blueprints by type, ME/TE levels
-9. **Blueprint Management** - Update blueprint data, mark favorites
-
-#### Corporation Data
-10. **Corporation Assets** - GET /api/corporations/{id}/assets (for CEO/Director roles)
-11. **Corporation Wallet** - Corporation wallet balance and divisions
-12. **Corporation Blueprints** - Corporation-owned blueprints access
-
-### 📋 Phase 4: Manufacturing & Pricing System (Planned)
-
-#### Blueprint & Manufacturing Calculations
-- Blueprint search and filtering across character/corporation blueprints
-- Material requirements calculation from INVENTION_MATERIALS and related tables
-- Manufacturing cost calculator (materials + facility fees + taxes)
-- Apply skill bonuses (ME, TE, industry skills) from character skills
-- Facility modifiers (structure bonuses, rigs, system bonuses)
-- Profit/IPH calculations with build time and costs
-- Component building (recursive calculation for T2/T3)
-- Invention calculations for T2 blueprints
-
-#### Market Data Integration
-- ESI market data endpoint integration for real-time prices
-- EVEMarketer API integration as fallback pricing source
-- Region/system scoping for accurate pricing
-- Price caching strategy (in-memory with TTL, consider Redis for distributed)
-- Historical price data for trend analysis
-- Buy/sell price selection (use buy orders for selling, sell orders for buying materials)
 
 ### 📋 Phase 5: Mining & Resources (Planned)
 - Ore/ice calculator with volume and value
@@ -686,69 +382,3 @@ For implementation guidance, refer to:
 - 🚧 API validation: FluentValidation for all endpoint inputs
 - 🚧 Testing suite: Unit tests for calculations, integration tests for ESI calls
 - 🚧 Observability: Request logging, correlation IDs, performance metrics
-
-## 0) Prep & Baseline
-- Document critical user flows and gather current binaries for reference.
-- Freeze auto-updates during migration; capture current settings/DB locations.
-
-## 1) Project Conversion
-- Convert `EVE Isk per Hour.vbproj` to SDK-style (`UseWindowsForms`, icon/manifest wiring).
-- Migrate `packages.config` to `PackageReference`; remove `packages/` folder reliance.
-- Normalize configurations: drop Itanium, prefer x64/AnyCPU; fix output paths.
- - Split out a backend class library (domain/services) and an ASP.NET Core Web API host to serve the React app.
-
-## 2) Framework Upgrade
-- Retarget to `net8.0-windows` first; resolve compile errors (namespaces, designer resources).
-- Validate WinForms designers; fix resx/designer mismatches.
-- Retarget to `net9.0-windows` after dependencies verified.
- - Bring up ASP.NET Core host on `net8.0-windows` → `net9.0-windows`; wire minimal APIs for early endpoints.
-
-## 3) Dependency Updates
-- Update `Newtonsoft.Json` to latest; evaluate moving to `System.Text.Json` where feasible.
-- Replace `Stub.System.Data.SQLite.Core.NetFramework` with `System.Data.SQLite.Core` (or `Microsoft.Data.Sqlite` if viable); adjust code for provider API differences.
-- Confirm `LpSolveDotNet` compatibility; identify alternative LP solver if needed.
- - Add ASP.NET Core packages (`Microsoft.AspNetCore.App`), authentication middleware, and CORS configuration.
- - Choose React stack: Vite + TypeScript + React Query + Zustand/Redux (lightweight), component library (e.g., MUI or Mantine).
-
-## 4) Architecture/Code Health
-- Introduce composition root and services for settings, DB, ESI, pricing, calculations; reduce `Globals.vb` reliance.
-- Refactor `frmMain` by extracting feature controllers/services (manufacturing, mining, pricing, assets, shopping list).
-- Replace `Thread`/flags with `async/await`, `Task`, and `CancellationToken` for long operations.
-- Centralize HTTP with `HttpClientFactory`-style helper; add resilient retry/backoff and rate-limit handling for ESI/market calls.
-- Wrap SQLite access with repositories; ensure WAL, parameterized queries, and proper disposal.
- - Define Web API contracts (auth/session, settings, blueprints, manufacturing calc, mining, shopping list, assets, market prices); version the API.
- - Add DTOs and mappers between domain models and API payloads; keep UI-agnostic domain logic in shared library.
-
-## 5) Testing & CI
-- Add unit tests for calculation modules (industry yields, taxes/fees, shopping aggregation).
-- Add integration tests with recorded fixtures for ESI/market data.
-- Set up GitHub Actions CI to build/test on Windows for `net8.0-windows` and `net9.0-windows`.
- - Add API contract tests (backend) and component/E2E tests (React via Playwright/Cypress).
- - Lint/format pipelines for frontend (ESLint/Prettier) and backend (StyleCop/FXCop analyzers).
-
-## 6) Configuration & Settings
-- Migrate settings to JSON (`appsettings.json` + user scope) and backfill from legacy settings files.
-- Externalize URLs (ESI, update manifests, market providers); avoid hard-coded strings where possible.
-- Secure any secrets (client IDs/keys) via Windows credential APIs.
- - Add CORS, HTTPS, and auth/session configuration for the Web API; store tokens securely (http-only cookies or local secure storage).
-
-## 7) Updater / Deployment
-- Decide on deployment: MSIX or modernized ClickOnce; deprecate legacy updater EXEs if possible.
-- Implement signed build artifacts; update versioning strategy.
-- Provide migration guide for users (DB path, settings import, re-auth if scopes change).
- - For the SPA: decide hosting (static site + API), or bundle via Electron/PWA for offline; set up CI build to produce static assets.
-
-## 8) UX/Performance Tweaks (optional)
-- Improve responsiveness for grid-heavy tabs; move heavy calc to background tasks with progress/cancel.
-- Consider modest UI refresh (consistent theming, DPI awareness).
- - Design responsive React UI: key pages (Dashboard, Blueprint search, Manufacturing calc, Market prices, Shopping list, Mining). Add optimistic updates and caching via React Query.
-
-## 9) Data & Migration
-- Validate SQLite schema compatibility; write migration scripts if provider changes.
-- Ensure settings/DB are not overwritten during updates; preserve user data.
- - Add API endpoints to migrate/import legacy settings and cached data for the SPA.
-
-## 10) Tracking & Rollout
-- Create milestone issues for each workstream; prioritize blockers (project conversion, dependencies, ESI client).
-- Establish release checkpoints: beta on net8, GA on net9 after validation.
- - Plan phased SPA rollout: alpha (internal), beta (power users), GA after parity with WinForms core flows.

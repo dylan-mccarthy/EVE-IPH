@@ -167,6 +167,44 @@ export interface ItemsByGroupResponse {
   typeIds: number[];
 }
 
+// Manufacturing
+export interface ManufacturingRequest {
+  blueprintId: number;
+  materialEfficiency?: number;
+  timeEfficiency?: number;
+  totalUnits?: number;
+  runsPerBlueprint?: number;
+  numberOfBlueprints?: number;
+  productionLines?: number;
+  regionId?: number;
+}
+
+export interface ManufacturingLineItem {
+  typeId: number;
+  typeName: string;
+  quantity: number;
+  unitPrice: number;
+  totalCost: number;
+  missingPrice: boolean;
+}
+
+export interface ManufacturingResponse {
+  blueprintId: number;
+  blueprintName: string;
+  regionId: number;
+  materialEfficiency: number;
+  timeEfficiency: number;
+  totalUnits: number;
+  componentMaterials: ManufacturingLineItem[];
+  rawMaterials: ManufacturingLineItem[];
+  componentTotalCost: number;
+  rawTotalCost: number;
+  productValue: number;
+  profit: number;
+  iph: number;
+  warnings: string[];
+}
+
 async function handleResponse<T = unknown>(response: Response): Promise<T> {
   if (response.status === 401) {
     localStorage.removeItem('eveAuth');
@@ -210,10 +248,14 @@ export const api = {
         .then(handleResponse<IndustryJob[]>),
   },
 
-  // Market endpoints
-  market: {
-    getOrders: (characterId: number): Promise<MarketOrder[]> =>
-      fetch(`${API_BASE}/api/characters/${characterId}/orders`).then(handleResponse<MarketOrder[]>),
+  // Manufacturing endpoints
+  manufacturing: {
+    calculate: (request: ManufacturingRequest): Promise<ManufacturingResponse> =>
+      fetch(`${API_BASE}/api/manufacturing/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      }).then(handleResponse<ManufacturingResponse>),
   },
 
   // Wallet endpoints
@@ -265,8 +307,11 @@ export const api = {
       fetch(`${API_BASE}/api/blueprints/${blueprintId}`).then(handleResponse<BlueprintDetails>),
   },
 
-  // Market Price endpoints
+  // Market endpoints (orders + cached prices + refresh + groups)
   market: {
+    getOrders: (characterId: number): Promise<MarketOrder[]> =>
+      fetch(`${API_BASE}/api/characters/${characterId}/orders`).then(handleResponse<MarketOrder[]>),
+
     getPrices: (typeIds: number[], regionId: number = 10000002): Promise<MarketPriceResponse> => {
       const searchParams = new URLSearchParams({
         typeIds: typeIds.join(','),

@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using server.Infrastructure;
 using server.Models;
+using server.Services.Manufacturing;
 
 namespace server.Services.Blueprints;
 
@@ -408,10 +409,5 @@ public sealed class BlueprintService : IBlueprintService
     }
 
     private static int CalculateAdjustedQuantity(int baseQuantity, int me, int runs)
-    {
-        // ME reduces material requirements by 1% per level
-        var reduction = 1.0 - (me * 0.01);
-        var perRun = (int)Math.Ceiling(baseQuantity * reduction);
-        return perRun * runs;
-    }
+        => MaterialMath.CalculateAdjustedQuantity(baseQuantity, me, runs);
 }

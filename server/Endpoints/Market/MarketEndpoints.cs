@@ -107,7 +107,7 @@ public static class MarketEndpoints
             return Results.BadRequest("No valid type IDs provided");
         }
 
-        var prices = await priceService.GetPricesAsync(ids, regionId);
+        var prices = await priceService.GetCachedPricesAsync(ids, regionId);
         
         return Results.Ok(new MarketPriceResponse(prices));
     }
@@ -122,7 +122,7 @@ public static class MarketEndpoints
             return Results.BadRequest("Invalid type ID");
         }
 
-        var price = await priceService.GetPriceAsync(typeId, regionId);
+        var price = await priceService.GetCachedPriceAsync(typeId, regionId);
         
         if (price == null)
         {

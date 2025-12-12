@@ -58,6 +58,63 @@ public class MarketPriceService : IMarketPriceService
         return prices.TryGetValue(typeId, out var price) ? price : null;
     }
 
+    public async Task<MarketPrice?> GetCachedPriceAsync(int typeId, int regionId = 10000002)
+    {
+        var prices = await GetCachedPricesAsync(new[] { typeId }, regionId);
+        return prices.TryGetValue(typeId, out var price) ? price : null;
+    }
+
+    public async Task<Dictionary<int, MarketPrice>> GetCachedPricesAsync(IEnumerable<int> typeIds, int regionId = 10000002)
+    {
+        var typeIdList = typeIds.Distinct().ToList();
+        var result = new Dictionary<int, MarketPrice>();
+
+        if (typeIdList.Count == 0)
+        {
+            return result;
+        }
+
+        await using var db = _dbFactory.Create();
+        await db.OpenAsync();
+
+        var placeholders = string.Join(",", typeIdList.Select((_, i) => $"@id{i}"));
+
+        var cmd = db.CreateCommand();
+        cmd.CommandText = $@"
+            SELECT TYPE_ID, REGION_ID, BUY_PRICE, SELL_PRICE, VOLUME, LAST_UPDATED, EXPIRES_AT
+            FROM MARKET_PRICES
+            WHERE REGION_ID = @RegionId
+              AND TYPE_ID IN ({placeholders})";
+        cmd.Parameters.AddWithValue("@RegionId", regionId);
+        for (var i = 0; i < typeIdList.Count; i++)
+        {
+            cmd.Parameters.AddWithValue($"@id{i}", typeIdList[i]);
+        }
+
+        var now = DateTime.UtcNow;
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var expiresAt = DateTime.Parse(reader.GetString(6));
+            if (expiresAt <= now)
+            {
+                continue;
+            }
+
+            var typeId = reader.GetInt32(0);
+            result[typeId] = new MarketPrice(
+                typeId,
+                reader.GetInt32(1),
+                reader.GetDecimal(2),
+                reader.GetDecimal(3),
+                reader.GetInt64(4),
+                DateTime.Parse(reader.GetString(5)),
+                expiresAt);
+        }
+
+        return result;
+    }
+
     public async Task<Dictionary<int, MarketPrice>> GetPricesAsync(IEnumerable<int> typeIds, int regionId = 10000002)
     {
         var typeIdList = typeIds.ToList();

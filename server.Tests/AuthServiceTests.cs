@@ -1,6 +1,7 @@
 using System;
 using System.Net.Http;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using server.Infrastructure;
 using server.Models;
@@ -56,7 +57,11 @@ public class AuthServiceTests
 
         var httpFactory = new StubHttpClientFactory();
         var characters = new StubCharacterService();
-        return new AuthService(options, httpFactory, characters);
+        var characterPersistence = new StubCharacterPersistenceService();
+        var tokenStore = new StubTokenStore();
+        var logger = NullLogger<AuthService>.Instance;
+
+        return new AuthService(options, httpFactory, characters, characterPersistence, tokenStore, logger);
     }
 
     private sealed class StubHttpClientFactory : IHttpClientFactory
@@ -100,6 +105,42 @@ public class AuthServiceTests
         public Task<CharacterSkillsResponse> GetSkillsAsync(long characterId, string accessToken, CancellationToken ct = default)
         {
             return Task.FromResult(new CharacterSkillsResponse(0, 0, new List<SkillGroup>()));
+        }
+    }
+
+    private sealed class StubCharacterPersistenceService : ICharacterPersistenceService
+    {
+        public Task SaveCharacterAsync(long characterId, string characterName, CharacterProfile profile, string scopes, CancellationToken ct = default)
+            => Task.CompletedTask;
+
+        public Task SaveSkillsAsync(long characterId, CharacterSkillsResponse skills, CancellationToken ct = default)
+            => Task.CompletedTask;
+    }
+
+    private sealed class StubTokenStore : ITokenStore
+    {
+        private readonly Dictionary<long, StoredToken> _tokens = new();
+
+        public Task SaveTokenAsync(long characterId, string accessToken, DateTimeOffset expiresAt, string refreshToken, string scopes, CancellationToken ct = default)
+        {
+            _tokens[characterId] = new StoredToken(characterId, accessToken, expiresAt, refreshToken, scopes);
+            return Task.CompletedTask;
+        }
+
+        public Task<StoredToken?> GetTokenAsync(long characterId, CancellationToken ct = default)
+        {
+            _tokens.TryGetValue(characterId, out var token);
+            return Task.FromResult<StoredToken?>(token);
+        }
+
+        public Task UpdateTokenAsync(long characterId, string accessToken, DateTimeOffset expiresAt, CancellationToken ct = default)
+        {
+            if (_tokens.TryGetValue(characterId, out var existing))
+            {
+                _tokens[characterId] = existing with { AccessToken = accessToken, ExpiresAt = expiresAt };
+            }
+
+            return Task.CompletedTask;
         }
     }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import api, { type BlueprintSummary, type BlueprintDetails, type MarketPrice } from '../utils/api';
+import api, { type BlueprintSummary, type BlueprintDetails, type ManufacturingResponse } from '../utils/api';
 import './Blueprints.css';
 
 const Blueprints = () => {
@@ -21,17 +21,10 @@ const Blueprints = () => {
   const [productionLines, setProductionLines] = useState(1);
   const [totalUnits, setTotalUnits] = useState(1);
 
-  // Market prices state
-  const [marketPrices, setMarketPrices] = useState<Record<number, MarketPrice>>({});
-  const [loadingPrices, setLoadingPrices] = useState(false);
-  const [priceError, setPriceError] = useState<string | null>(null);
-
-  // Calculate adjusted material quantity based on ME
-  const calculateMaterialQuantity = (baseQuantity: number, meLevel: number): number => {
-    // ME reduces material requirements by 1% per level
-    const reduction = 1 - (meLevel * 0.01);
-    return Math.ceil(baseQuantity * reduction * totalUnits);
-  };
+  // Server-side manufacturing calculation state
+  const [manufacturing, setManufacturing] = useState<ManufacturingResponse | null>(null);
+  const [loadingCalc, setLoadingCalc] = useState(false);
+  const [calcError, setCalcError] = useState<string | null>(null);
 
   // Format ISK value
   const formatISK = (value: number): string => {
@@ -45,62 +38,29 @@ const Blueprints = () => {
     return `${value.toFixed(2)} ISK`;
   };
 
-  // Calculate total component cost
-  const calculateComponentCost = (): number => {
-    if (!selectedBlueprint) return 0;
-    
-    const mfgActivity = selectedBlueprint.activities.find(a => a.activityName === 'Manufacturing');
-    if (!mfgActivity) return 0;
-
-    return mfgActivity.materials.reduce((total, mat) => {
-      const adjustedQty = calculateMaterialQuantity(mat.quantity, me);
-      const price = marketPrices[mat.materialId];
-      const unitPrice = price?.sellPrice || 0;
-      return total + (adjustedQty * unitPrice);
-    }, 0);
-  };
-
-  // Calculate product market value
-  const calculateProductValue = (): number => {
-    if (!selectedBlueprint) return 0;
-    
-    const mfgActivity = selectedBlueprint.activities.find(a => a.activityName === 'Manufacturing');
-    if (!mfgActivity) return 0;
-
-    const productPrice = marketPrices[mfgActivity.productId];
-    const unitPrice = productPrice?.sellPrice || 0;
-    return unitPrice * mfgActivity.productQuantity * totalUnits;
-  };
-
-  // Fetch cached market prices when blueprint is selected (no ESI refresh)
-  const fetchMarketPrices = async (blueprint: BlueprintDetails) => {
-    const mfgActivity = blueprint.activities.find(a => a.activityName === 'Manufacturing');
-    if (!mfgActivity) return;
-
-    const typeIds = [
-      mfgActivity.productId,
-      ...mfgActivity.materials.map(m => m.materialId)
-    ];
-
+  const calculateManufacturing = async (blueprintId: number) => {
     try {
-      setLoadingPrices(true);
-      setPriceError(null);
-      
-      // Only get cached prices - never trigger ESI refresh
-      const cachedResponse = await api.market.getPrices(typeIds);
-      setMarketPrices(cachedResponse.prices);
-      
-      // Check if we have prices for all items
-      const missingPrices = typeIds.filter(id => !cachedResponse.prices[id]);
-      
-      if (missingPrices.length > 0) {
-        setPriceError(`Missing prices for ${missingPrices.length} item(s). Update prices from the Market Data page.`);
-      }
+      setLoadingCalc(true);
+      setCalcError(null);
+
+      const result = await api.manufacturing.calculate({
+        blueprintId,
+        materialEfficiency: me,
+        timeEfficiency: te,
+        totalUnits,
+        runsPerBlueprint: runsPerBp,
+        numberOfBlueprints: numBps,
+        productionLines,
+        regionId: 10000002,
+      });
+
+      setManufacturing(result);
     } catch (err) {
-      console.error('Error fetching market prices:', err);
-      setPriceError(err instanceof Error ? err.message : 'Failed to fetch market prices');
+      console.error('Error calculating manufacturing:', err);
+      setCalcError(err instanceof Error ? err.message : 'Failed to calculate manufacturing');
+      setManufacturing(null);
     } finally {
-      setLoadingPrices(false);
+      setLoadingCalc(false);
     }
   };
 
@@ -162,9 +122,6 @@ const Blueprints = () => {
       const details = await api.blueprints.getDetails(blueprint.id);
       setSelectedBlueprint(details);
       setSearchTerm(blueprint.name); // Update search term to selected blueprint name
-      
-      // Fetch market prices for the blueprint materials
-      await fetchMarketPrices(details);
     } catch (err) {
       console.error('Error fetching blueprint details:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch blueprint details');
@@ -185,10 +142,29 @@ const Blueprints = () => {
     setNumBps(1);
     setProductionLines(1);
     setTotalUnits(1);
-    // Clear market prices
-    setMarketPrices({});
-    setPriceError(null);
+    // Clear server-side calculation
+    setManufacturing(null);
+    setCalcError(null);
   };
+
+  // Recalculate on input changes (debounced)
+  useEffect(() => {
+    if (!selectedBlueprint) return;
+
+    const timeout = setTimeout(() => {
+      calculateManufacturing(selectedBlueprint.blueprintId);
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [
+    selectedBlueprint,
+    me,
+    te,
+    totalUnits,
+    runsPerBp,
+    numBps,
+    productionLines,
+  ]);
 
   return (
     <div className="blueprints-container">
@@ -335,148 +311,131 @@ const Blueprints = () => {
                 <div className="summary-card">
                   <h4>Component Material Cost</h4>
                   <div className="cost-value">
-                    {loadingPrices ? 'Loading...' : formatISK(calculateComponentCost())}
+                    {loadingCalc ? 'Loading...' : formatISK(manufacturing?.componentTotalCost ?? 0)}
                   </div>
                   <div className="cost-label">
-                    {loadingPrices ? 'Fetching prices...' : 'Jita sell prices'}
+                    {loadingCalc ? 'Calculating...' : 'Cached sell prices'}
                   </div>
                 </div>
                 <div className="summary-card">
                   <h4>Raw Material Cost</h4>
                   <div className="cost-value">
-                    {loadingPrices ? 'Loading...' : formatISK(calculateComponentCost())}
+                    {loadingCalc ? 'Loading...' : formatISK(manufacturing?.rawTotalCost ?? 0)}
                   </div>
                   <div className="cost-label">
-                    {loadingPrices ? 'Fetching prices...' : 'Same as components'}
+                    {loadingCalc ? 'Calculating...' : 'Recursive breakdown'}
                   </div>
                 </div>
                 <div className="summary-card">
                   <h4>Market Price</h4>
                   <div className="cost-value">
-                    {loadingPrices ? 'Loading...' : formatISK(calculateProductValue())}
+                    {loadingCalc ? 'Loading...' : formatISK(manufacturing?.productValue ?? 0)}
                   </div>
                   <div className="cost-label">Product sell price</div>
                 </div>
                 <div className="summary-card profit">
                   <h4>Profit</h4>
                   <div className="cost-value">
-                    {loadingPrices ? 'Loading...' : formatISK(calculateProductValue() - calculateComponentCost())}
+                    {loadingCalc ? 'Loading...' : formatISK(manufacturing?.profit ?? 0)}
                   </div>
                   <div className="cost-label">Market - Cost</div>
                 </div>
               </div>
 
-              {/* Price Information */}
-              {priceError && (
+              {/* Calculation / Price Information */}
+              {calcError && (
                 <div className="price-error">
-                  <p>⚠️ {priceError}</p>
+                  <p>⚠️ {calcError}</p>
+                </div>
+              )}
+              {manufacturing?.warnings?.length ? (
+                <div className="price-error">
+                  <p>⚠️ {manufacturing.warnings[0]}</p>
                   <p style={{ fontSize: '0.85rem', marginTop: '8px' }}>
                     Go to <a href="/market-data" style={{ color: '#667eea', textDecoration: 'underline' }}>Market Data</a> to sync prices from Jita.
                   </p>
                 </div>
-              )}
-              {Object.keys(marketPrices).length > 0 && marketPrices[Object.keys(marketPrices)[0] as any] && (
-                <div className="price-info">
-                  <span className="price-timestamp">
-                    📊 Using cached prices from {new Date(marketPrices[Object.keys(marketPrices)[0] as any].lastUpdated).toLocaleString()}
-                  </span>
-                  <span className="price-note">
-                    (Update prices from the <a href="/market-data" style={{ color: '#667eea' }}>Market Data</a> page)
-                  </span>
-                </div>
-              )}
+              ) : null}
 
               {/* Materials Lists */}
               <div className="materials-container">
-                {selectedBlueprint.activities
-                  .filter(activity => activity.activityName === 'Manufacturing')
-                  .map((activity) => (
-                    <div key={activity.activityName} className="materials-wrapper">
-                      {/* Component Materials */}
-                      <div className="materials-column">
-                        <h3>Component Materials</h3>
-                        <table className="materials-table compact">
-                          <thead>
-                            <tr>
-                              <th>Material</th>
-                              <th>Qty</th>
-                              <th>Cost/Item</th>
-                              <th>Total Cost</th>
+                {manufacturing ? (
+                  <div className="materials-wrapper">
+                    {/* Component Materials */}
+                    <div className="materials-column">
+                      <h3>Component Materials</h3>
+                      <table className="materials-table compact">
+                        <thead>
+                          <tr>
+                            <th>Material</th>
+                            <th>Qty</th>
+                            <th>Cost/Item</th>
+                            <th>Total Cost</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {manufacturing.componentMaterials.map((mat) => (
+                            <tr key={mat.typeId}>
+                              <td className="material-name">
+                                <img
+                                  src={`https://images.evetech.net/types/${mat.typeId}/icon?size=32`}
+                                  alt={mat.typeName}
+                                  className="material-icon"
+                                />
+                                <span>{mat.typeName}</span>
+                              </td>
+                              <td className="quantity">{mat.quantity.toLocaleString()}</td>
+                              <td className="price">
+                                {loadingCalc ? '...' : mat.unitPrice > 0 ? mat.unitPrice.toFixed(2) : '-'}
+                              </td>
+                              <td className="total-cost">
+                                {loadingCalc ? '...' : mat.totalCost > 0 ? formatISK(mat.totalCost) : '-'}
+                              </td>
                             </tr>
-                          </thead>
-                          <tbody>
-                            {activity.materials.map((mat) => {
-                              const adjustedQty = calculateMaterialQuantity(mat.quantity, me);
-                              const price = marketPrices[mat.materialId];
-                              const unitPrice = price?.sellPrice || 0;
-                              const totalCost = adjustedQty * unitPrice;
-                              return (
-                                <tr key={mat.materialId}>
-                                  <td className="material-name">
-                                    <img
-                                      src={`https://images.evetech.net/types/${mat.materialId}/icon?size=32`}
-                                      alt={mat.materialName}
-                                      className="material-icon"
-                                    />
-                                    <span>{mat.materialName}</span>
-                                  </td>
-                                  <td className="quantity">{adjustedQty.toLocaleString()}</td>
-                                  <td className="price">
-                                    {loadingPrices ? '...' : unitPrice > 0 ? unitPrice.toFixed(2) : '-'}
-                                  </td>
-                                  <td className="total-cost">
-                                    {loadingPrices ? '...' : totalCost > 0 ? formatISK(totalCost) : '-'}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Raw Materials */}
-                      <div className="materials-column">
-                        <h3>Raw Materials</h3>
-                        <table className="materials-table compact">
-                          <thead>
-                            <tr>
-                              <th>Material</th>
-                              <th>Qty</th>
-                              <th>Cost/Item</th>
-                              <th>Total Cost</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {activity.materials.map((mat) => {
-                              const adjustedQty = calculateMaterialQuantity(mat.quantity, me);
-                              const price = marketPrices[mat.materialId];
-                              const unitPrice = price?.sellPrice || 0;
-                              const totalCost = adjustedQty * unitPrice;
-                              return (
-                                <tr key={`raw-${mat.materialId}`}>
-                                  <td className="material-name">
-                                    <img
-                                      src={`https://images.evetech.net/types/${mat.materialId}/icon?size=32`}
-                                      alt={mat.materialName}
-                                      className="material-icon"
-                                    />
-                                    <span>{mat.materialName}</span>
-                                  </td>
-                                  <td className="quantity">{adjustedQty.toLocaleString()}</td>
-                                  <td className="price">
-                                    {loadingPrices ? '...' : unitPrice > 0 ? unitPrice.toFixed(2) : '-'}
-                                  </td>
-                                  <td className="total-cost">
-                                    {loadingPrices ? '...' : totalCost > 0 ? formatISK(totalCost) : '-'}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  ))}
+
+                    {/* Raw Materials */}
+                    <div className="materials-column">
+                      <h3>Raw Materials</h3>
+                      <table className="materials-table compact">
+                        <thead>
+                          <tr>
+                            <th>Material</th>
+                            <th>Qty</th>
+                            <th>Cost/Item</th>
+                            <th>Total Cost</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {manufacturing.rawMaterials.map((mat) => (
+                            <tr key={`raw-${mat.typeId}`}>
+                              <td className="material-name">
+                                <img
+                                  src={`https://images.evetech.net/types/${mat.typeId}/icon?size=32`}
+                                  alt={mat.typeName}
+                                  className="material-icon"
+                                />
+                                <span>{mat.typeName}</span>
+                              </td>
+                              <td className="quantity">{mat.quantity.toLocaleString()}</td>
+                              <td className="price">
+                                {loadingCalc ? '...' : mat.unitPrice > 0 ? mat.unitPrice.toFixed(2) : '-'}
+                              </td>
+                              <td className="total-cost">
+                                {loadingCalc ? '...' : mat.totalCost > 0 ? formatISK(mat.totalCost) : '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="loading">Calculating manufacturing...</div>
+                )}
               </div>
 
               {/* Additional Activities (Invention, etc.) */}
