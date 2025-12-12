@@ -1,6 +1,6 @@
 # Modernization Tasks (Backend + React SPA)
 
-## Current Status (December 9, 2025)
+## Current Status (December 12, 2025)
 
 ### ✅ Phase 1 Complete: Authentication & Token Management
 - **ASP.NET Core 9 Backend**: Minimal API server running on port 5056
@@ -126,12 +126,12 @@ The manufacturing calculator is the core feature of EVE-IPH. It calculates mater
      - TE (Time Efficiency) 0-20: Ready for time calculations
      - Runs per BP, Number of BPs, Production Lines
      - Total Units (highlighted) - multiplies material quantities
-    - **Cost Summary Cards**: Component Material Cost, Market Price, Profit (from cached market prices); Raw Material Cost still mirrors components (raw breakdown UI is next)
+      - **Cost Summary Cards**: Component Material Cost, Raw Material Cost, Market Price, Profit (server-calculated from cached market prices)
    - **Two-Column Materials Layout**:
      - Component Materials (left): Direct manufacturing inputs
-       - Raw Materials (right): Same as components for now (will be replaced by recursive breakdown)
+          - Raw Materials (right): Recursive breakdown (raw expansion)
      - Both showing Material, Qty (adjusted for ME + Total Units), Cost/Item, Total Cost
-   - **Real-time ME Calculations**: `Math.ceil(baseQty * (1 - ME * 0.01) * totalUnits)`
+    - **Server-side Quantity Calculations**: material quantities computed by backend (legacy-style rounding parity)
    - **Collapsible Other Activities**: Invention, Research, etc. hidden by default
    - **CSS Styling**: Compact tables, gradient headers, responsive grid layout
 
@@ -233,62 +233,67 @@ CREATE INDEX idx_market_prices_expires ON MARKET_PRICES(EXPIRES_AT);
 
 ##### Phase 4.3: Blueprint Manufacturing Cost Integration 🚧 IN PROGRESS
 
-**Goal**: Make the backend the source of truth for manufacturing calculations (materials/time/fees/profit), and convert the React calculator into a thin client that renders server-calculated results.
+**Goal**: Keep the backend as the source of truth for manufacturing calculations (materials/time/fees/profit) and port legacy parity items incrementally with tests.
 
-**Already implemented**
-- Blueprints UI reads cached prices only (no ESI refresh from the calculator)
-- Component material cost, product value, and profit calculated from cached Jita sell prices
-- Backend raw-material breakdown endpoint: `POST /api/blueprints/{blueprintId}/raw-materials`
+**Checkpoint (December 12, 2025) — Implemented**
+- `POST /api/manufacturing/calculate` is live and the Blueprints calculator uses it (UI is a thin client)
+- Market pricing reads used by the calculator are cache-only (no ESI refresh on read)
+- `ManufacturingRequest` / `ManufacturingResponse` expanded to support calculator inputs + detailed breakdowns
+- Manufacturing response includes both component materials and recursive raw-material breakdown
+- Legacy-style material quantity rounding parity implemented server-side (shared helper) + focused unit tests
+- CS1591 (missing XML comments) warnings suppressed to reduce build noise
 
-**Next (Server-side Calculations Migration)**
+**Next Iterations (Parity Increments)**
 
-1. 🚧 **Define the server manufacturing contract (DTOs)**
-    - Expand `ManufacturingRequest` beyond `(BlueprintId, Runs, System, Region)` to include the calculator inputs used by the UI:
-       - ME, TE
-       - Total units (or output multiplier)
-       - Runs per BP + number of BPs (or a normalized “total runs”)
-       - Production lines (for time/IPH)
-       - RegionId (pricing lookup region)
-    - Expand `ManufacturingResponse` to return data the UI needs without client math:
-       - Component materials breakdown (per material: typeId, name, adjustedQty, unitPrice, totalCost)
-       - Raw materials breakdown (same shape)
-       - Totals: componentTotalCost, rawTotalCost, productValue, profit
-       - Optional: warnings (missing prices, stale prices)
+1. ✅ **Make test runs actionable (reduce unrelated noise)**
+   - Fixed CharacterPersistenceService tests (SQLite in-memory schema persistence)
+   - Aligned AssetsService “no token” test with current contract (service throws; endpoint maps to 401)
+   - `dotnet test server.Tests` is green again
 
-2. 🚧 **Implement MVP server calculations (match current UI behavior first)**
-    - Implement `ManufacturingService.CalculateAsync` to:
-       - Load blueprint manufacturing materials/products
-       - Apply the same *temporary* ME math currently in the UI (1% per ME level) so results match immediately
-       - Multiply quantities by total units
-       - Use cached market prices only (do not trigger refresh from this endpoint)
-       - Compute component total cost + product value + profit
+2. ✅ **Facility modifiers (materials + time)**
+   - Added explicit request inputs for `FacilityMaterialMultiplier` and `FacilityTimeMultiplier`
+   - Applied facility material multiplier to the legacy-style material rounding path
 
-3. 🚧 **Wire raw-material breakdown into manufacturing response**
-    - Reuse `BlueprintService.GetRawMaterialsAsync` (or move the shared logic into a helper) so `ManufacturingResponse` can include both:
-       - component breakdown (direct mats)
-       - raw breakdown (recursive)
-    - Ensure raw-vs-components totals are computed using the same cached-price rules
+3. ✅ **Time + IPH (server-side)**
+   - Exposed `BASE_PRODUCTION_TIME` via blueprint details and used it to compute time
+   - IPH is derived from profit divided by wall-clock time (adjusted by TE, facility time multiplier, and production lines)
 
-4. 🚧 **Convert the React calculator to render server results**
-    - Update `Blueprints.tsx` to call `POST /api/manufacturing/calculate` whenever:
-       - selected blueprint changes
-       - ME/TE/runs/lines/units inputs change
-    - Remove/retire client-side calculation functions (`calculateMaterialQuantity`, component/product/profit totals)
-    - Keep the existing “missing prices” messaging, but drive it from server warnings where possible
+4. ✅ **Fees/taxes (server-side placeholders)**
+   - Added request inputs: `SalesTaxRate`, `BrokerFeeRate`, `JobInstallationCost` (defaults are 0)
+   - Profit calculation subtracts these values; pricing source rules unchanged
 
-5. 🚧 **Legacy parity upgrades (incremental, verified steps)**
-    - **Material quantity parity**: replace the temporary “1% per ME” rule with the legacy-style rounding logic used throughout shopping/manufacturing:
-       - distribute runs across BPs when relevant
-       - compute per-BP quantities using legacy rounding (e.g., `max(runs, ceil(round(runs * baseQty * MEBonus, 2)))`)
-    - **Facility + system inputs**: add system cost index + facility multipliers (material/time/cost) to the server calculation
-    - **Fees/taxes**: implement sales tax + broker fee logic server-side (legacy: Accounting, Broker Relations, standings, minimum fee)
-    - **Time/IPH**: compute build time using TE + facility time multiplier + number of lines; derive IPH from server totals
+5. ✅ **Validation (small golden cases)**
+   - Added manufacturing “golden” tests using mocked blueprints/prices to validate full response + IPH math
 
-6. 📋 **Validation**
-    - Add focused unit tests for:
-       - material rounding rules
-       - fees/taxes calculations
-       - stable outputs for a small known blueprint across ME/units changes
+6. ✅ **Legacy-aligned market-mode pricing + fee semantics (product-side)**
+   - Added `ProductMarketMode` to mirror legacy modes: Buy / Sell Order / Buy Order / Sell
+   - Product value now uses min sell vs max buy based on mode; tax/broker are applied consistently with the selected mode
+   - Defaults preserve current behavior (Sell Order + explicit rates)
+
+7. ✅ **Legacy-aligned market-mode pricing + fee semantics (material-side)**
+   - Added `MaterialMarketMode` to mirror legacy material acquisition: Buy (min sell) vs Buy Order (max buy + broker)
+   - Component material unit prices now follow the selected mode; Buy Order includes broker fee as an acquisition cost
+   - Raw-material breakdown pricing now follows the same mode (so totals stay consistent)
+
+8. ✅ **Dual profit/IPH parity (components vs raw cost basis)**
+   - Added `ProfitCostBasis` request knob (Components vs Raw) and server-side selection of Profit/IPH
+   - Response now includes `ProfitComponents`, `ProfitRaw`, `IphComponents`, and `IphRaw` for easy parity validation
+   - UI adds a selector for the basis and displays both variants alongside the selected Profit/IPH
+
+9. ✅ **Build vs Buy components + excess sellback (opt-in)**
+   - Added `ProfitCostBasis=BuildBuy` for an auto build-vs-buy calculation (cheapest per component)
+   - Added `SellExcessItems` to allow net sellback of excess intermediate output (sell price minus sales tax + broker)
+   - Response exposes `BuildBuyTotalCost` and `ExcessSellValueNet` when BuildBuy is selected
+   - Added a focused golden test to lock behavior
+
+**Remaining Phase 4.3 work (next up)**
+- ✅ **System/job cost modeling (beyond placeholders)**
+   - Added opt-in request inputs for system index + job fee modeling (legacy-shaped parity increment)
+   - Uses adjusted-price EIV (`ITEM_PRICES_FACT.ADJUSTED_PRICE`) with a simple formula: `EIV * (systemIndex * costMultiplier + facilityTax + sccSurcharge)`
+- ✅ **UI wiring for new inputs**
+   - Surfaced facility multipliers + taxes/fees inputs on the Manufacturing Calculator
+   - Requests sent to `/api/manufacturing/calculate` now include these values
+   - IPH is displayed in the summary (server-side time/IPH is now visible)
 ---
 
 ### 📋 Phase 5: Mining & Resources (Planned)

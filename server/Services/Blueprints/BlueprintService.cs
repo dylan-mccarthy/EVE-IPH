@@ -80,15 +80,17 @@ public sealed class BlueprintService : IBlueprintService
 
         // Get blueprint basic info
         const string sqlBp = @"
-            SELECT BLUEPRINT_ID, BLUEPRINT_NAME, ITEM_GROUP, ITEM_CATEGORY
-            FROM ALL_BLUEPRINTS
-            WHERE BLUEPRINT_ID = @id";
+            SELECT bp.BLUEPRINT_ID, bp.BLUEPRINT_NAME, bp.ITEM_GROUP, bp.ITEM_CATEGORY, fact.BASE_PRODUCTION_TIME
+            FROM ALL_BLUEPRINTS bp
+            LEFT JOIN ALL_BLUEPRINTS_FACT fact ON fact.BLUEPRINT_ID = bp.BLUEPRINT_ID
+            WHERE bp.BLUEPRINT_ID = @id";
 
         var bpCmd = conn.CreateCommand();
         bpCmd.CommandText = sqlBp;
         bpCmd.Parameters.AddWithValue("@id", blueprintId);
 
         string? bpName = null, group = null, category = null;
+        int? baseProductionTimeSeconds = null;
         await using (var reader = await bpCmd.ExecuteReaderAsync(ct))
         {
             if (!await reader.ReadAsync(ct))
@@ -97,6 +99,11 @@ public sealed class BlueprintService : IBlueprintService
             bpName = reader.GetString(1);
             group = reader.GetString(2);
             category = reader.GetString(3);
+
+            if (!reader.IsDBNull(4))
+            {
+                baseProductionTimeSeconds = reader.GetInt32(4);
+            }
         }
 
         // Get all activities with materials
@@ -127,7 +134,7 @@ public sealed class BlueprintService : IBlueprintService
                 activities.Add(activity);
         }
 
-        return new BlueprintDetails(blueprintId, bpName!, group!, category!, activities);
+        return new BlueprintDetails(blueprintId, bpName!, group!, category!, baseProductionTimeSeconds, activities);
     }
 
     private async Task<BlueprintActivity?> GetActivityDetailsAsync(
@@ -261,6 +268,27 @@ public sealed class BlueprintService : IBlueprintService
             componentMaterials,
             rawMaterials
         );
+    }
+
+    public async Task<long?> FindManufacturingBlueprintIdByProductTypeIdAsync(long productTypeId, CancellationToken ct = default)
+    {
+        await using var conn = _connections.Create();
+        await conn.OpenAsync(ct);
+
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT bm.BLUEPRINT_ID
+            FROM ALL_BLUEPRINT_MATERIALS bm
+            WHERE bm.PRODUCT_ID = @productTypeId
+              AND bm.ACTIVITY = 1
+            LIMIT 1;";
+
+        cmd.Parameters.AddWithValue("@productTypeId", productTypeId);
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        if (result is null || result is DBNull) return null;
+
+        return Convert.ToInt64(result);
     }
 
     private async Task<List<MaterialBreakdown>> GetComponentMaterialsAsync(

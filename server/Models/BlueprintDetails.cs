@@ -5,6 +5,7 @@ public record BlueprintDetails(
     string BlueprintName,
     string ItemGroup,
     string ItemCategory,
+    int? BaseProductionTimeSeconds,
     IReadOnlyList<BlueprintActivity> Activities
 );
 

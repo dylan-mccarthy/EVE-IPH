@@ -11,21 +11,25 @@ namespace server.Tests.Services;
 
 public class CharacterPersistenceServiceTests : IDisposable
 {
-    private readonly SqliteConnection _connection;
+    private readonly string _connectionString;
+    private readonly SqliteConnection _keepAliveConnection;
     private readonly ISqliteConnectionFactory _connectionFactory;
     private readonly Mock<ILogger<CharacterPersistenceService>> _mockLogger;
     private readonly CharacterPersistenceService _service;
 
     public CharacterPersistenceServiceTests()
     {
-        // Use in-memory SQLite database for testing
-        _connection = new SqliteConnection("Data Source=:memory:");
-        _connection.Open();
+        // Use a shared in-memory SQLite database for testing.
+        // IMPORTANT: ':memory:' databases are per-connection; the service opens/disposes connections per call.
+        // Using mode=memory&cache=shared plus a keep-alive connection keeps schema/data stable across connections.
+        _connectionString = "Data Source=file:character-skills-tests?mode=memory&cache=shared";
+        _keepAliveConnection = new SqliteConnection(_connectionString);
+        _keepAliveConnection.Open();
 
         // Create necessary tables
         CreateTestTables();
 
-        _connectionFactory = new TestSqliteConnectionFactory(_connection);
+        _connectionFactory = new TestSqliteConnectionFactory(_connectionString);
         _mockLogger = new Mock<ILogger<CharacterPersistenceService>>();
         _service = new CharacterPersistenceService(_connectionFactory, _mockLogger.Object);
     }
@@ -55,10 +59,9 @@ public class CharacterPersistenceServiceTests : IDisposable
         await _service.SaveSkillsAsync(characterId, skills);
 
         // Assert
-        var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT COUNT(*) FROM CHARACTER_SKILLS WHERE CHARACTER_ID = @characterId";
-        cmd.Parameters.AddWithValue("@characterId", characterId);
-        var count = Convert.ToInt64(await cmd.ExecuteScalarAsync());
+        var count = await ExecuteScalarLongAsync(
+            "SELECT COUNT(*) FROM CHARACTER_SKILLS WHERE CHARACTER_ID = @characterId",
+            ("@characterId", characterId));
 
         count.Should().Be(3);
     }
@@ -99,16 +102,19 @@ public class CharacterPersistenceServiceTests : IDisposable
         await _service.SaveSkillsAsync(characterId, updatedSkills);
 
         // Assert
-        var cmd = _connection.CreateCommand();
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync();
+
+        await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT SKILL_LEVEL, SKILL_POINTS 
-            FROM CHARACTER_SKILLS 
+            SELECT SKILL_LEVEL, SKILL_POINTS
+            FROM CHARACTER_SKILLS
             WHERE CHARACTER_ID = @characterId AND SKILL_TYPE_ID = 3300";
         cmd.Parameters.AddWithValue("@characterId", characterId);
-        
+
         await using var reader = await cmd.ExecuteReaderAsync();
-        await reader.ReadAsync();
-        
+        (await reader.ReadAsync()).Should().BeTrue();
+
         var level = reader.GetInt32(0);
         var sp = reader.GetInt64(1);
 
@@ -116,7 +122,7 @@ public class CharacterPersistenceServiceTests : IDisposable
         sp.Should().Be(256000);
 
         // Verify total count is 2 (old skill replaced, new skill added)
-        var countCmd = _connection.CreateCommand();
+        var countCmd = conn.CreateCommand();
         countCmd.CommandText = "SELECT COUNT(*) FROM CHARACTER_SKILLS WHERE CHARACTER_ID = @characterId";
         countCmd.Parameters.AddWithValue("@characterId", characterId);
         var count = Convert.ToInt64(await countCmd.ExecuteScalarAsync());
@@ -149,10 +155,9 @@ public class CharacterPersistenceServiceTests : IDisposable
         await _service.SaveSkillsAsync(characterId, emptySkills);
 
         // Assert
-        var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT COUNT(*) FROM CHARACTER_SKILLS WHERE CHARACTER_ID = @characterId";
-        cmd.Parameters.AddWithValue("@characterId", characterId);
-        var count = Convert.ToInt64(await cmd.ExecuteScalarAsync());
+        var count = await ExecuteScalarLongAsync(
+            "SELECT COUNT(*) FROM CHARACTER_SKILLS WHERE CHARACTER_ID = @characterId",
+            ("@characterId", characterId));
 
         count.Should().Be(0);
     }
@@ -191,15 +196,13 @@ public class CharacterPersistenceServiceTests : IDisposable
         await _service.SaveSkillsAsync(characterId2, skills2);
 
         // Assert
-        var cmd1 = _connection.CreateCommand();
-        cmd1.CommandText = "SELECT COUNT(*) FROM CHARACTER_SKILLS WHERE CHARACTER_ID = @characterId";
-        cmd1.Parameters.AddWithValue("@characterId", characterId1);
-        var count1 = Convert.ToInt64(await cmd1.ExecuteScalarAsync());
+        var count1 = await ExecuteScalarLongAsync(
+            "SELECT COUNT(*) FROM CHARACTER_SKILLS WHERE CHARACTER_ID = @characterId",
+            ("@characterId", characterId1));
 
-        var cmd2 = _connection.CreateCommand();
-        cmd2.CommandText = "SELECT COUNT(*) FROM CHARACTER_SKILLS WHERE CHARACTER_ID = @characterId";
-        cmd2.Parameters.AddWithValue("@characterId", characterId2);
-        var count2 = Convert.ToInt64(await cmd2.ExecuteScalarAsync());
+        var count2 = await ExecuteScalarLongAsync(
+            "SELECT COUNT(*) FROM CHARACTER_SKILLS WHERE CHARACTER_ID = @characterId",
+            ("@characterId", characterId2));
 
         count1.Should().Be(1);
         count2.Should().Be(1);
@@ -207,9 +210,9 @@ public class CharacterPersistenceServiceTests : IDisposable
 
     private void CreateTestTables()
     {
-        var cmd = _connection.CreateCommand();
+        using var cmd = _keepAliveConnection.CreateCommand();
         cmd.CommandText = @"
-            CREATE TABLE CHARACTER_SKILLS (
+            CREATE TABLE IF NOT EXISTS CHARACTER_SKILLS (
                 CHARACTER_ID INTEGER NOT NULL,
                 SKILL_TYPE_ID INTEGER NOT NULL,
                 SKILL_LEVEL INTEGER NOT NULL,
@@ -219,20 +222,35 @@ public class CharacterPersistenceServiceTests : IDisposable
         cmd.ExecuteNonQuery();
     }
 
+    private async Task<long> ExecuteScalarLongAsync(string sql, params (string Name, object Value)[] parameters)
+    {
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync();
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        foreach (var (name, value) in parameters)
+        {
+            cmd.Parameters.AddWithValue(name, value);
+        }
+
+        return Convert.ToInt64(await cmd.ExecuteScalarAsync());
+    }
+
     public void Dispose()
     {
-        _connection?.Dispose();
+        _keepAliveConnection?.Dispose();
     }
 
     private sealed class TestSqliteConnectionFactory : ISqliteConnectionFactory
     {
-        private readonly SqliteConnection _connection;
+        private readonly string _connectionString;
 
-        public TestSqliteConnectionFactory(SqliteConnection connection)
+        public TestSqliteConnectionFactory(string connectionString)
         {
-            _connection = connection;
+            _connectionString = connectionString;
         }
 
-        public SqliteConnection Create() => _connection;
+        public SqliteConnection Create() => new(_connectionString);
     }
 }

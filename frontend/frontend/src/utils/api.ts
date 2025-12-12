@@ -176,6 +176,19 @@ export interface ManufacturingRequest {
   runsPerBlueprint?: number;
   numberOfBlueprints?: number;
   productionLines?: number;
+  facilityMaterialMultiplier?: number;
+  facilityTimeMultiplier?: number;
+  salesTaxRate?: number;
+  brokerFeeRate?: number;
+  jobInstallationCost?: number;
+  materialMarketMode?: 'Buy' | 'BuyOrder';
+  productMarketMode?: 'Buy' | 'SellOrder' | 'BuyOrder' | 'Sell';
+  profitCostBasis?: 'Components' | 'Raw' | 'BuildBuy';
+  sellExcessItems?: boolean;
+  systemCostIndex?: number;
+  facilityCostMultiplier?: number;
+  facilityTaxRate?: number;
+  sccSurchargeRate?: number;
   regionId?: number;
 }
 
@@ -199,9 +212,22 @@ export interface ManufacturingResponse {
   rawMaterials: ManufacturingLineItem[];
   componentTotalCost: number;
   rawTotalCost: number;
+  buildBuyTotalCost: number | null;
   productValue: number;
+  salesTax: number;
+  brokerFee: number;
+  jobInstallationCost: number;
+  totalEiv: number;
+  totalTimeSeconds: number;
+  profitComponents: number;
+  profitRaw: number;
+  profitBuildBuy: number | null;
   profit: number;
+  iphComponents: number;
+  iphRaw: number;
+  iphBuildBuy: number | null;
   iph: number;
+  excessSellValueNet: number | null;
   warnings: string[];
 }
 

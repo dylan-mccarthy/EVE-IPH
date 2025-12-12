@@ -11,7 +11,7 @@ const Blueprints = () => {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Manufacturing settings state
   const [me, setMe] = useState(0);
@@ -20,6 +20,21 @@ const Blueprints = () => {
   const [numBps, setNumBps] = useState(1);
   const [productionLines, setProductionLines] = useState(1);
   const [totalUnits, setTotalUnits] = useState(1);
+
+  // Optional parity inputs (default values preserve existing behavior)
+  const [facilityMaterialMultiplier, setFacilityMaterialMultiplier] = useState(1);
+  const [facilityTimeMultiplier, setFacilityTimeMultiplier] = useState(1);
+  const [salesTaxRate, setSalesTaxRate] = useState(0);
+  const [brokerFeeRate, setBrokerFeeRate] = useState(0);
+  const [jobInstallationCost, setJobInstallationCost] = useState(0);
+  const [materialMarketMode, setMaterialMarketMode] = useState<'Buy' | 'BuyOrder'>('Buy');
+  const [productMarketMode, setProductMarketMode] = useState<'Buy' | 'SellOrder' | 'BuyOrder' | 'Sell'>('SellOrder');
+  const [profitCostBasis, setProfitCostBasis] = useState<'Components' | 'Raw' | 'BuildBuy'>('Components');
+  const [sellExcessItems, setSellExcessItems] = useState(false);
+  const [systemCostIndex, setSystemCostIndex] = useState(0);
+  const [facilityCostMultiplier, setFacilityCostMultiplier] = useState(1);
+  const [facilityTaxRate, setFacilityTaxRate] = useState(0);
+  const [sccSurchargeRate, setSccSurchargeRate] = useState(0);
 
   // Server-side manufacturing calculation state
   const [manufacturing, setManufacturing] = useState<ManufacturingResponse | null>(null);
@@ -38,6 +53,19 @@ const Blueprints = () => {
     return `${value.toFixed(2)} ISK`;
   };
 
+  const formatDuration = (seconds: number): string => {
+    if (!Number.isFinite(seconds) || seconds <= 0) return '0s';
+
+    const totalSeconds = Math.floor(seconds);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+
+    if (hours > 0) return `${hours}h ${minutes}m ${secs}s`;
+    if (minutes > 0) return `${minutes}m ${secs}s`;
+    return `${secs}s`;
+  };
+
   const calculateManufacturing = async (blueprintId: number) => {
     try {
       setLoadingCalc(true);
@@ -51,6 +79,19 @@ const Blueprints = () => {
         runsPerBlueprint: runsPerBp,
         numberOfBlueprints: numBps,
         productionLines,
+        facilityMaterialMultiplier,
+        facilityTimeMultiplier,
+        salesTaxRate,
+        brokerFeeRate,
+        jobInstallationCost,
+        materialMarketMode,
+        productMarketMode,
+        profitCostBasis,
+        sellExcessItems,
+        systemCostIndex,
+        facilityCostMultiplier,
+        facilityTaxRate,
+        sccSurchargeRate,
         regionId: 10000002,
       });
 
@@ -142,6 +183,15 @@ const Blueprints = () => {
     setNumBps(1);
     setProductionLines(1);
     setTotalUnits(1);
+    setFacilityMaterialMultiplier(1);
+    setFacilityTimeMultiplier(1);
+    setSalesTaxRate(0);
+    setBrokerFeeRate(0);
+    setJobInstallationCost(0);
+    setSystemCostIndex(0);
+    setFacilityCostMultiplier(1);
+    setFacilityTaxRate(0);
+    setSccSurchargeRate(0);
     // Clear server-side calculation
     setManufacturing(null);
     setCalcError(null);
@@ -164,6 +214,15 @@ const Blueprints = () => {
     runsPerBp,
     numBps,
     productionLines,
+    facilityMaterialMultiplier,
+    facilityTimeMultiplier,
+    salesTaxRate,
+    brokerFeeRate,
+    jobInstallationCost,
+    systemCostIndex,
+    facilityCostMultiplier,
+    facilityTaxRate,
+    sccSurchargeRate,
   ]);
 
   return (
@@ -304,6 +363,152 @@ const Blueprints = () => {
                     className="highlight-input" 
                   />
                 </div>
+
+                <div className="control-group">
+                  <label>Facility Material Mult</label>
+                  <input
+                    type="number"
+                    value={facilityMaterialMultiplier}
+                    onChange={(e) => setFacilityMaterialMultiplier(Math.max(0, Number(e.target.value)))}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className="control-group">
+                  <label>Facility Time Mult</label>
+                  <input
+                    type="number"
+                    value={facilityTimeMultiplier}
+                    onChange={(e) => setFacilityTimeMultiplier(Math.max(0, Number(e.target.value)))}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div className="control-group">
+                  <label>Sales Tax Rate (0-1)</label>
+                  <input
+                    type="number"
+                    value={salesTaxRate}
+                    onChange={(e) => setSalesTaxRate(Math.max(0, Math.min(1, Number(e.target.value))))}
+                    min="0"
+                    max="1"
+                    step="0.001"
+                  />
+                </div>
+                <div className="control-group">
+                  <label>Broker Fee Rate (0-1)</label>
+                  <input
+                    type="number"
+                    value={brokerFeeRate}
+                    onChange={(e) => setBrokerFeeRate(Math.max(0, Math.min(1, Number(e.target.value))))}
+                    min="0"
+                    max="1"
+                    step="0.001"
+                  />
+                </div>
+
+                <div className="control-group">
+                  <label>Material Market Mode</label>
+                  <select
+                    value={materialMarketMode}
+                    onChange={(e) => setMaterialMarketMode(e.target.value as typeof materialMarketMode)}
+                  >
+                    <option value="Buy">Buy (min sell; no fees)</option>
+                    <option value="BuyOrder">Buy Order (max buy; broker)</option>
+                  </select>
+                </div>
+
+                <div className="control-group">
+                  <label>Product Market Mode</label>
+                  <select
+                    value={productMarketMode}
+                    onChange={(e) => setProductMarketMode(e.target.value as typeof productMarketMode)}
+                  >
+                    <option value="SellOrder">Sell Order (min sell; tax + broker)</option>
+                    <option value="Sell">Sell (max buy; tax only)</option>
+                    <option value="Buy">Buy (min sell; no fees)</option>
+                    <option value="BuyOrder">Buy Order (max buy; broker only)</option>
+                  </select>
+                </div>
+
+                <div className="control-group">
+                  <label>Profit Cost Basis</label>
+                  <select
+                    value={profitCostBasis}
+                    onChange={(e) => setProfitCostBasis(e.target.value as typeof profitCostBasis)}
+                  >
+                    <option value="Components">Components</option>
+                    <option value="Raw">Raw</option>
+                    <option value="BuildBuy">Build/Buy (auto)</option>
+                  </select>
+                </div>
+
+                <div className="control-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={sellExcessItems}
+                      onChange={(e) => setSellExcessItems(e.target.checked)}
+                      style={{ marginRight: '8px' }}
+                    />
+                    Sell Excess Items (net)
+                  </label>
+                </div>
+                <div className="control-group">
+                  <label>Job Installation Cost</label>
+                  <input
+                    type="number"
+                    value={jobInstallationCost}
+                    onChange={(e) => setJobInstallationCost(Math.max(0, Number(e.target.value)))}
+                    min="0"
+                    step="1"
+                  />
+                </div>
+
+                <div className="control-group">
+                  <label>System Cost Index (0-1)</label>
+                  <input
+                    type="number"
+                    value={systemCostIndex}
+                    onChange={(e) => setSystemCostIndex(Math.max(0, Math.min(1, Number(e.target.value))))}
+                    min="0"
+                    max="1"
+                    step="0.0001"
+                  />
+                </div>
+                <div className="control-group">
+                  <label>Facility Cost Mult</label>
+                  <input
+                    type="number"
+                    value={facilityCostMultiplier}
+                    onChange={(e) => setFacilityCostMultiplier(Math.max(0, Number(e.target.value)))}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className="control-group">
+                  <label>Facility Tax Rate (0-1)</label>
+                  <input
+                    type="number"
+                    value={facilityTaxRate}
+                    onChange={(e) => setFacilityTaxRate(Math.max(0, Math.min(1, Number(e.target.value))))}
+                    min="0"
+                    max="1"
+                    step="0.001"
+                  />
+                </div>
+                <div className="control-group">
+                  <label>SCC Surcharge (0-1)</label>
+                  <input
+                    type="number"
+                    value={sccSurchargeRate}
+                    onChange={(e) => setSccSurchargeRate(Math.max(0, Math.min(1, Number(e.target.value))))}
+                    min="0"
+                    max="1"
+                    step="0.001"
+                  />
+                </div>
               </div>
 
               {/* Cost Summary */}
@@ -338,9 +543,98 @@ const Blueprints = () => {
                   <div className="cost-value">
                     {loadingCalc ? 'Loading...' : formatISK(manufacturing?.profit ?? 0)}
                   </div>
-                  <div className="cost-label">Market - Cost</div>
+                  <div className="cost-label">Market - Cost - Fees</div>
+                </div>
+
+                <div className="summary-card">
+                  <h4>Profit (Components)</h4>
+                  <div className="cost-value">
+                    {loadingCalc ? 'Loading...' : formatISK(manufacturing?.profitComponents ?? 0)}
+                  </div>
+                  <div className="cost-label">Market - Component Cost - Fees</div>
+                </div>
+
+                <div className="summary-card">
+                  <h4>Profit (Raw)</h4>
+                  <div className="cost-value">
+                    {loadingCalc ? 'Loading...' : formatISK(manufacturing?.profitRaw ?? 0)}
+                  </div>
+                  <div className="cost-label">Market - Raw Cost - Fees</div>
+                </div>
+
+                <div className="summary-card">
+                  <h4>IPH</h4>
+                  <div className="cost-value">
+                    {loadingCalc ? 'Loading...' : formatISK(manufacturing?.iph ?? 0)}
+                  </div>
+                  <div className="cost-label">ISK per hour</div>
+                </div>
+
+                <div className="summary-card">
+                  <h4>IPH (Components)</h4>
+                  <div className="cost-value">
+                    {loadingCalc ? 'Loading...' : formatISK(manufacturing?.iphComponents ?? 0)}
+                  </div>
+                  <div className="cost-label">Profit components / time</div>
+                </div>
+
+                <div className="summary-card">
+                  <h4>IPH (Raw)</h4>
+                  <div className="cost-value">
+                    {loadingCalc ? 'Loading...' : formatISK(manufacturing?.iphRaw ?? 0)}
+                  </div>
+                  <div className="cost-label">Profit raw / time</div>
+                </div>
+
+                <div className="summary-card">
+                  <h4>Build Time</h4>
+                  <div className="cost-value">
+                    {loadingCalc ? 'Loading...' : formatDuration(manufacturing?.totalTimeSeconds ?? 0)}
+                  </div>
+                  <div className="cost-label">Adjusted for lines</div>
                 </div>
               </div>
+
+              {manufacturing && !loadingCalc ? (
+                <div className="cost-summary">
+                  <div className="summary-card">
+                    <h4>Sales Tax</h4>
+                    <div className="cost-value">{formatISK(manufacturing.salesTax ?? 0)}</div>
+                    <div className="cost-label">Applied to product value</div>
+                  </div>
+                  <div className="summary-card">
+                    <h4>Broker Fee</h4>
+                    <div className="cost-value">{formatISK(manufacturing.brokerFee ?? 0)}</div>
+                    <div className="cost-label">Applied to product value</div>
+                  </div>
+                  <div className="summary-card">
+                    <h4>Job Cost</h4>
+                    <div className="cost-value">{formatISK(manufacturing.jobInstallationCost ?? 0)}</div>
+                    <div className="cost-label">Installation / index model</div>
+                  </div>
+                  <div className="summary-card">
+                    <h4>EIV (Adj)</h4>
+                    <div className="cost-value">{formatISK(manufacturing.totalEiv ?? 0)}</div>
+                    <div className="cost-label">Adjusted-price based</div>
+                  </div>
+
+                  {manufacturing.buildBuyTotalCost !== null ? (
+                    <div className="summary-card">
+                      <h4>Build/Buy Cost</h4>
+                      <div className="cost-value">{formatISK(manufacturing.buildBuyTotalCost ?? 0)}</div>
+                      <div className="cost-label">Auto build vs buy</div>
+                    </div>
+                  ) : null}
+
+                  {manufacturing.excessSellValueNet !== null ? (
+                    <div className="summary-card">
+                      <h4>Excess Sellback</h4>
+                      <div className="cost-value">{formatISK(manufacturing.excessSellValueNet ?? 0)}</div>
+                      <div className="cost-label">After tax + broker</div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
               {/* Calculation / Price Information */}
               {calcError && (

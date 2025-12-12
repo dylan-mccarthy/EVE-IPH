@@ -14,6 +14,7 @@ using server.Infrastructure;
 using server.Services.Blueprints;
 using server.Services.Auth;
 using server.Services.Characters;
+using server.Services.IndustryCosts;
 using server.Services.Manufacturing;
 using server.Services.Market;
 using server.Services.Settings;
@@ -100,6 +101,7 @@ builder.Services.AddHttpClient<IMarketOrdersService, MarketOrdersService>((sp, c
 
 // Domain services (stubs for now)
 builder.Services.AddScoped<IBlueprintService, BlueprintService>();
+builder.Services.AddScoped<IIndustryCostService, IndustryCostService>();
 builder.Services.AddScoped<IManufacturingService, ManufacturingService>();
 builder.Services.AddScoped<IMarketService, MarketService>();
 builder.Services.AddScoped<IMarketPriceService, MarketPriceService>();

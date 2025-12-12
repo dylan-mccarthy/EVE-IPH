@@ -14,14 +14,19 @@ The WinForms code remains reference-only while we reach parity.
 - **Manual market sync:** Blueprints/manufacturing views read cached prices only; dedicated Market Data page performs refresh.
 - **Server is source of truth for calculations:** manufacturing math runs on the backend; React renders results.
 
-## Current Status (Checkpoint)
+## Current Status (Checkpoint — December 12, 2025)
 See `tasks.md` for the detailed phase checklist. High level:
 - Phase 1–3 (Auth + character data pages) complete
-- Phase 4 (Manufacturing Calculator) in progress
-  - Blueprint search/details: complete
-  - Market price cache + Market Data UI: complete
-  - Cached price wiring into calculator: complete (temporary client-side implementation)
-  - Component → raw recursive breakdown endpoint: complete (UI wiring is next)
+- Phase 4.1–4.2 (Blueprints + market cache/refresh UI) complete
+- Phase 4.3 (Manufacturing Calculator) is now server-authoritative:
+  - Calculator is a thin client rendering server-calculated totals, profit, time, and IPH
+  - Component + recursive raw breakdown included in the manufacturing response
+  - Legacy-shaped parity increments implemented behind explicit request knobs:
+    - facility material/time multipliers
+    - product/material market-mode semantics (buy/sell order variants)
+    - fees/taxes + job cost model (incl. adjusted-price EIV support)
+    - profit cost basis selection (components vs raw)
+    - opt-in auto Build/Buy components with optional excess sellback
 
 ## Roadmap (Phased)
 
@@ -29,10 +34,15 @@ See `tasks.md` for the detailed phase checklist. High level:
 **Target parity (legacy manufacturing columns/features include):** material cost, total cost, taxes/broker fees, job/installation cost, build time, ISK/hr, ROI, SVR/price trend signals, facility/system index modifiers, and T2 invention costs.
 
 **Near-term milestones**
-1. Move manufacturing calculations to the server (API becomes authoritative; UI becomes a thin client).
-2. Migrate the calculator UI to call the manufacturing endpoint and render server-calculated breakdowns.
-3. Show raw-material breakdown (recursive) and side-by-side totals: buy components vs build from raw (both priced from cached market data).
-4. Add manufacturing “extras” incrementally on the server: fees/taxes, build time, job/installation cost, and profit metrics.
+1. ✅ Move manufacturing calculations to the server (API becomes authoritative; UI becomes a thin client).
+2. ✅ Migrate the calculator UI to call the manufacturing endpoint and render server-calculated breakdowns.
+3. ✅ Show raw-material breakdown (recursive) and side-by-side totals (components vs raw) priced from cached market data.
+4. ✅ Add manufacturing “extras” incrementally on the server: fees/taxes, build time, job/installation cost, and profit metrics.
+
+**Next parity frontier (planned)**
+1. Manual Build/Buy overrides (legacy BBList behavior) + tests
+2. Deeper legacy toggles (e.g., “BP not owned” suggestions) if still desired
+3. Shopping list integration using selected cost basis (components/raw/build-buy)
 
 ### Phase 5: Mining & Resources
 Port the ore/ice/gas and reprocessing math used by the legacy app (e.g., reprocessing plant workflows).

@@ -85,7 +85,7 @@ public class AssetsServiceTests_New
     }
 
     [Fact]
-    public async Task GetAssetsAsync_WhenNoToken_ReturnsEmpty()
+    public async Task GetAssetsAsync_WhenNoToken_ThrowsInvalidOperation()
     {
         // Arrange
         var characterId = 12345L;
@@ -102,10 +102,10 @@ public class AssetsServiceTests_New
             _mockLogger.Object);
 
         // Act
-        var assets = await service.GetAssetsAsync(characterId);
+        var act = async () => await service.GetAssetsAsync(characterId);
 
         // Assert
-        assets.Should().BeEmpty();
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]
