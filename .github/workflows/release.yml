@@ -135,9 +135,9 @@ jobs:
       #   APPLE_CERTIFICATE_P12       — base64-encoded Developer ID Application cert
       #   APPLE_CERTIFICATE_PASSWORD  — password for the .p12 archive
       #   APPLE_TEAM_ID               — 10-character Apple Developer team ID
-      # Remove the `if: false` condition once the secrets are configured.
+      # This step activates automatically when APPLE_CERTIFICATE_P12 is configured.
       - name: Import Developer ID certificate
-        if: false   # TODO: enable when APPLE_CERTIFICATE_P12 secret is configured
+        if: env.CERTIFICATE_P12 != ''
         env:
           CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
           CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -175,9 +175,9 @@ jobs:
       # Requires the following additional secrets:
       #   APPLE_NOTARY_USER   — Apple ID used for notarization
       #   APPLE_NOTARY_PASS   — app-specific password for the Apple ID
-      # Remove the `if: false` condition once the secrets are configured.
+      # This step activates automatically when APPLE_NOTARY_USER is configured.
       - name: Notarize packages
-        if: false   # TODO: enable when Apple notarization secrets are configured
+        if: env.APPLE_ID != ''
         env:
           APPLE_ID: ${{ secrets.APPLE_NOTARY_USER }}
           APPLE_PASSWORD: ${{ secrets.APPLE_NOTARY_PASS }}
