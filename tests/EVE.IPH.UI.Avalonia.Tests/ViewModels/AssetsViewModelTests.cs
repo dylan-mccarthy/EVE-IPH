@@ -63,16 +63,17 @@ public sealed class AssetsViewModelTests
     [Fact]
     public async Task RefreshAsync_WhenCalled_ReloadsAssets()
     {
-        IAssetsScreenService screenService = Substitute.For<IAssetsScreenService>();
-        screenService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(CreateScreenData([
+        IAssetsQueryService queryService = Substitute.For<IAssetsQueryService>();
+        IAssetsCommandService commandService = Substitute.For<IAssetsCommandService>();
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(CreateScreenData([
             CreateHydratedAsset(1001, 1, AssetBlueprintKind.None, "Heavy Water"),
         ])));
-        screenService.RefreshAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(new AssetsScreenData(
+        commandService.RefreshAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(new AssetsScreenData(
             [CreateHydratedAsset(1002, 2, AssetBlueprintKind.Copy, "Vargur Blueprint")],
             [new AssetOwnerFilterOption(null, "All Owners"), new AssetOwnerFilterOption(1002, "Mina Kall")],
             "Refreshed assets for 1 connected character.")));
 
-        AssetsViewModel viewModel = new(new AssetViewFilterService(), screenService);
+        AssetsViewModel viewModel = new(new AssetViewFilterService(), queryService, commandService);
         await viewModel.LoadTask;
 
         await viewModel.RefreshAsync();
@@ -84,15 +85,16 @@ public sealed class AssetsViewModelTests
 
     private static AssetsViewModel CreateViewModel()
     {
-        IAssetsScreenService screenService = Substitute.For<IAssetsScreenService>();
-        screenService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(CreateScreenData([
+        IAssetsQueryService queryService = Substitute.For<IAssetsQueryService>();
+        IAssetsCommandService commandService = Substitute.For<IAssetsCommandService>();
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(CreateScreenData([
             CreateHydratedAsset(1001, 1, AssetBlueprintKind.None, "Heavy Water"),
             CreateHydratedAsset(1001, 2, AssetBlueprintKind.Original, "Vargur Blueprint"),
             CreateHydratedAsset(1002, 3, AssetBlueprintKind.Copy, "Vargur Blueprint"),
         ])));
-        screenService.RefreshAsync(Arg.Any<CancellationToken>()).Returns(call => screenService.GetScreenDataAsync(call.Arg<CancellationToken>()));
+        commandService.RefreshAsync(Arg.Any<CancellationToken>()).Returns(call => queryService.GetScreenDataAsync(call.Arg<CancellationToken>()));
 
-        return new AssetsViewModel(new AssetViewFilterService(), screenService);
+        return new AssetsViewModel(new AssetViewFilterService(), queryService, commandService);
     }
 
     private static AssetsScreenData CreateScreenData(IReadOnlyList<HydratedAsset> assets) => new(

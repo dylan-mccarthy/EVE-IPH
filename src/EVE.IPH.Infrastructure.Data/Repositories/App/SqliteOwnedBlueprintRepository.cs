@@ -43,6 +43,79 @@ public sealed class SqliteOwnedBlueprintRepository : IOwnedBlueprintRepository
         }
     }
 
+    public async Task<Result<IReadOnlyList<OwnedBlueprintRecord>>> GetByUsersAsync(IReadOnlyList<long> userIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(userIds);
+
+        if (userIds.Count == 0)
+        {
+            return Result<IReadOnlyList<OwnedBlueprintRecord>>.Success([]);
+        }
+
+        try
+        {
+            using System.Data.IDbConnection connection = _connectionFactory.CreateConnection();
+            const string sql = """
+                SELECT USER_ID, ITEM_ID, LOCATION_ID, BLUEPRINT_ID, BLUEPRINT_NAME,
+                       QUANTITY, ME, TE, RUNS, BP_TYPE, OWNED, SCANNED
+                FROM OWNED_BLUEPRINTS
+                WHERE USER_ID IN @UserIds
+                ORDER BY USER_ID, BLUEPRINT_NAME
+                """;
+
+            IEnumerable<OwnedBlueprintDto> rows = await connection.QueryAsync<OwnedBlueprintDto>(
+                new CommandDefinition(sql, new { UserIds = userIds.ToArray() }, cancellationToken: cancellationToken))
+                .ConfigureAwait(false);
+
+            return Result<IReadOnlyList<OwnedBlueprintRecord>>.Success(rows.Select(MapRecord).ToArray());
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<OwnedBlueprintRecord>>.Failure("DB_ERROR", ex.Message);
+        }
+    }
+
+    public async Task<Result<IReadOnlyList<OwnedBlueprintRecord>>> ReplaceAsync(long userId, IReadOnlyList<OwnedBlueprintRecord> blueprints, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(blueprints);
+
+        try
+        {
+            using System.Data.IDbConnection connection = _connectionFactory.CreateConnection();
+            connection.Open();
+            using System.Data.IDbTransaction transaction = connection.BeginTransaction();
+
+            await connection.ExecuteAsync(
+                new CommandDefinition(
+                    "DELETE FROM OWNED_BLUEPRINTS WHERE USER_ID = @UserId",
+                    new { UserId = userId },
+                    transaction,
+                    cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+            const string sql = """
+                INSERT INTO OWNED_BLUEPRINTS
+                    (USER_ID, ITEM_ID, LOCATION_ID, BLUEPRINT_ID, BLUEPRINT_NAME, QUANTITY, ME, TE, RUNS, BP_TYPE, OWNED, SCANNED)
+                VALUES
+                    (@UserId, @ItemId, @LocationId, @BlueprintId, @BlueprintName, @Quantity, @Me, @Te, @Runs, @BpType, @Owned, @Scanned)
+                """;
+
+            foreach (OwnedBlueprintRecord blueprint in blueprints)
+            {
+                await connection.ExecuteAsync(
+                    new CommandDefinition(sql, ToParam(blueprint), transaction, cancellationToken: cancellationToken))
+                    .ConfigureAwait(false);
+            }
+
+            transaction.Commit();
+
+            return await GetByUserAsync(userId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<OwnedBlueprintRecord>>.Failure("DB_ERROR", ex.Message);
+        }
+    }
+
     public async Task<Result<OwnedBlueprintRecord>> UpsertAsync(OwnedBlueprintRecord record, CancellationToken cancellationToken = default)
     {
         try
@@ -87,6 +160,25 @@ public sealed class SqliteOwnedBlueprintRepository : IOwnedBlueprintRepository
 
             int affected = await connection.ExecuteAsync(
                 new CommandDefinition(sql, new { UserId = userId, BlueprintId = blueprintId.Value }, cancellationToken: cancellationToken))
+                .ConfigureAwait(false);
+
+            return Result<bool>.Success(affected > 0);
+        }
+        catch (Exception ex)
+        {
+            return Result<bool>.Failure("DB_ERROR", ex.Message);
+        }
+    }
+
+    public async Task<Result<bool>> DeleteByUserAsync(long userId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using System.Data.IDbConnection connection = _connectionFactory.CreateConnection();
+            const string sql = "DELETE FROM OWNED_BLUEPRINTS WHERE USER_ID = @UserId";
+
+            int affected = await connection.ExecuteAsync(
+                new CommandDefinition(sql, new { UserId = userId }, cancellationToken: cancellationToken))
                 .ConfigureAwait(false);
 
             return Result<bool>.Success(affected > 0);

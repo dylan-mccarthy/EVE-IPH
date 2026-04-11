@@ -8,17 +8,20 @@ namespace EVE.IPH.UI.Avalonia.Tests.ViewModels;
 public sealed class IndustryJobsViewModelTests
 {
     [Fact]
-    public void Constructor_LoadsSummaryAndRows()
+    public async Task Constructor_LoadsSummaryAndRows()
     {
-        IIndustryJobsScreenService screenService = Substitute.For<IIndustryJobsScreenService>();
+        IIndustryJobsQueryService queryService = Substitute.For<IIndustryJobsQueryService>();
+        IIndustryJobsCommandService commandService = Substitute.For<IIndustryJobsCommandService>();
         IndustryJobsScreenData screenData = new(
             new IndustryJobSummary(2, 1, 3, 4, 5, 6),
             [
                 new IndustryJobDisplayRow(900001, "Kara Maken", "Manufacturing", "Vargur Blueprint", "Vargur", "Ship", "Jita", "The Forge", 1, 2, 0, "Tatara Alpha", "Ship Hangar", "Personal", IndustryJobState.InProgress, "In Progress", "Runs 0/2")
-            ]);
-        screenService.GetScreenData(Arg.Any<DateTimeOffset>()).Returns(screenData);
+            ],
+            "Loaded synced industry-job records from the local SQLite store.");
+        queryService.GetScreenDataAsync(Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(screenData);
 
-        IndustryJobsViewModel viewModel = new(screenService);
+        IndustryJobsViewModel viewModel = new(queryService, commandService);
+        await viewModel.LoadTask;
 
         viewModel.Summary.Should().Be(screenData.Summary);
         viewModel.Items.Should().BeEquivalentTo(screenData.Rows);
@@ -27,18 +30,22 @@ public sealed class IndustryJobsViewModelTests
     }
 
     [Fact]
-    public void Refresh_WhenCalled_ReloadsSummaryAndRows()
+    public async Task RefreshAsync_WhenCalled_ReloadsSummaryAndRows()
     {
-        IIndustryJobsScreenService screenService = Substitute.For<IIndustryJobsScreenService>();
-        screenService.GetScreenData(Arg.Any<DateTimeOffset>()).Returns(
-            new IndustryJobsScreenData(new IndustryJobSummary(0, 0, 0, 0, 0, 0), []),
+        IIndustryJobsQueryService queryService = Substitute.For<IIndustryJobsQueryService>();
+        IIndustryJobsCommandService commandService = Substitute.For<IIndustryJobsCommandService>();
+        queryService.GetScreenDataAsync(Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(
+            new IndustryJobsScreenData(new IndustryJobSummary(0, 0, 0, 0, 0, 0), [], "No synced industry jobs were found yet."));
+        commandService.RefreshAsync(Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(
             new IndustryJobsScreenData(
                 new IndustryJobSummary(2, 1, 3, 4, 5, 6),
-                [new IndustryJobDisplayRow(900001, "Kara Maken", "Manufacturing", "Vargur Blueprint", "Vargur", "Ship", "Jita", "The Forge", 1, 2, 0, "Tatara Alpha", "Ship Hangar", "Personal", IndustryJobState.InProgress, "In Progress", "Runs 0/2") ]));
+                [new IndustryJobDisplayRow(900001, "Kara Maken", "Manufacturing", "Vargur Blueprint", "Vargur", "Ship", "Jita", "The Forge", 1, 2, 0, "Tatara Alpha", "Ship Hangar", "Personal", IndustryJobState.InProgress, "In Progress", "Runs 0/2") ],
+                "Refreshed industry jobs for 1 connected character."));
 
-        IndustryJobsViewModel viewModel = new(screenService);
+        IndustryJobsViewModel viewModel = new(queryService, commandService);
+        await viewModel.LoadTask;
 
-        viewModel.Refresh();
+        await viewModel.RefreshAsync();
 
         viewModel.Items.Should().ContainSingle();
         viewModel.Summary.CurrentManufacturingJobs.Should().Be(2);

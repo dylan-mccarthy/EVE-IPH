@@ -75,6 +75,49 @@ public sealed class EsiClient(HttpClient httpClient, IEsiTokenProvider tokenProv
                     asset.Name ?? string.Empty)).ToList()),
             cancellationToken);
 
+    public Task<Result<IReadOnlyList<EsiOwnedBlueprint>>> GetCorporationBlueprintsAsync(
+        CorporationId corporationId,
+        CharacterId authenticatedCharacterId,
+        CancellationToken cancellationToken = default) =>
+        GetAuthorizedAsync<IReadOnlyList<OwnedBlueprintDto>, IReadOnlyList<EsiOwnedBlueprint>>(
+            $"corporations/{corporationId.Value}/blueprints/?datasource=tranquility",
+            authenticatedCharacterId,
+            dto => Result<IReadOnlyList<EsiOwnedBlueprint>>.Success(
+                dto.Select(blueprint => new EsiOwnedBlueprint(
+                    corporationId.Value,
+                    new ItemId(blueprint.ItemId),
+                    blueprint.LocationId,
+                    new BlueprintId(blueprint.TypeId),
+                    blueprint.Quantity,
+                    blueprint.MaterialEfficiency,
+                    blueprint.TimeEfficiency,
+                    blueprint.Runs)).ToList()),
+            cancellationToken);
+
+    public Task<Result<IReadOnlyList<string>>> GetCorporationRolesAsync(
+        CorporationId corporationId,
+        CharacterId authenticatedCharacterId,
+        CancellationToken cancellationToken = default) =>
+        GetAuthorizedAsync<IReadOnlyList<CorporationRoleAssignmentDto>, IReadOnlyList<string>>(
+            $"corporations/{corporationId.Value}/roles/?datasource=tranquility",
+            authenticatedCharacterId,
+            dto =>
+            {
+                CorporationRoleAssignmentDto? assignment = dto.FirstOrDefault(entry => entry.CharacterId == authenticatedCharacterId.Value);
+                if (assignment is null)
+                {
+                    return Result<IReadOnlyList<string>>.Success([]);
+                }
+
+                string[] roles = EnumerateRoles(assignment)
+                    .Where(role => !string.IsNullOrWhiteSpace(role))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+                return Result<IReadOnlyList<string>>.Success(roles);
+            },
+            cancellationToken);
+
     public Task<Result<IReadOnlyList<EsiSkill>>> GetSkillsAsync(
         CharacterId characterId,
         CancellationToken cancellationToken = default) =>
@@ -361,6 +404,15 @@ public sealed class EsiClient(HttpClient httpClient, IEsiTokenProvider tokenProv
         [property: JsonPropertyName("is_blueprint_copy")] bool IsBlueprintCopy,
         [property: JsonPropertyName("name")] string? Name);
 
+    private sealed record OwnedBlueprintDto(
+        [property: JsonPropertyName("item_id")] long ItemId,
+        [property: JsonPropertyName("location_id")] long LocationId,
+        [property: JsonPropertyName("type_id")] long TypeId,
+        [property: JsonPropertyName("quantity")] int Quantity,
+        [property: JsonPropertyName("time_efficiency")] int TimeEfficiency,
+        [property: JsonPropertyName("material_efficiency")] int MaterialEfficiency,
+        [property: JsonPropertyName("runs")] int Runs);
+
     private sealed record SkillDto(
         [property: JsonPropertyName("skill_id")] long SkillId,
         [property: JsonPropertyName("active_skill_level")] int ActiveSkillLevel,
@@ -378,6 +430,13 @@ public sealed class EsiClient(HttpClient httpClient, IEsiTokenProvider tokenProv
         [property: JsonPropertyName("started_at")] DateTimeOffset StartedAt,
         [property: JsonPropertyName("points_per_day")] double PointsPerDay,
         [property: JsonPropertyName("remainder_points")] double RemainderPoints);
+
+    private sealed record CorporationRoleAssignmentDto(
+        [property: JsonPropertyName("character_id")] long CharacterId,
+        [property: JsonPropertyName("roles")] IReadOnlyList<string>? Roles,
+        [property: JsonPropertyName("roles_at_base")] IReadOnlyList<string>? RolesAtBase,
+        [property: JsonPropertyName("roles_at_hq")] IReadOnlyList<string>? RolesAtHq,
+        [property: JsonPropertyName("roles_at_other")] IReadOnlyList<string>? RolesAtOther);
 
     private sealed record EntityNameDto(
         [property: JsonPropertyName("id")] long Id,
@@ -407,4 +466,14 @@ public sealed class EsiClient(HttpClient httpClient, IEsiTokenProvider tokenProv
         [property: JsonPropertyName("completed_date")] DateTimeOffset? CompletedDate,
         [property: JsonPropertyName("completed_character_id")] long? CompletedCharacterId,
         [property: JsonPropertyName("successful_runs")] int SuccessfulRuns);
+
+    private static IEnumerable<string> EnumerateRoles(CorporationRoleAssignmentDto assignment)
+    {
+        return Enumerate(assignment.Roles)
+            .Concat(Enumerate(assignment.RolesAtBase))
+            .Concat(Enumerate(assignment.RolesAtHq))
+            .Concat(Enumerate(assignment.RolesAtOther));
+
+        static IEnumerable<string> Enumerate(IReadOnlyList<string>? roles) => roles ?? [];
+    }
 }

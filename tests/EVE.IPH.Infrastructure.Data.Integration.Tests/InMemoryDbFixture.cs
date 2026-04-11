@@ -50,6 +50,8 @@ public sealed class InMemoryDbFixture : IDisposable
                 HAS_ASSET_ACCESS        INTEGER NOT NULL DEFAULT 0,
                 HAS_INDUSTRY_JOB_ACCESS INTEGER NOT NULL DEFAULT 0,
                 HAS_BLUEPRINT_ACCESS    INTEGER NOT NULL DEFAULT 0,
+                HAS_DIRECTOR_ROLE       INTEGER NOT NULL DEFAULT 0,
+                HAS_FACTORY_MANAGER_ROLE INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY (CORPORATION_ID)
             )
             """);
@@ -171,6 +173,57 @@ public sealed class InMemoryDbFixture : IDisposable
                 OWNED          INTEGER NOT NULL DEFAULT 1,
                 SCANNED        INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY (USER_ID, BLUEPRINT_ID)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS INDUSTRY_STRUCTURES (
+                STRUCTURE_ID          INTEGER NOT NULL,
+                STRUCTURE_NAME        TEXT    NOT NULL,
+                STRUCTURE_TYPE_ID     INTEGER NOT NULL DEFAULT 0,
+                SOLAR_SYSTEM_ID       INTEGER NOT NULL DEFAULT 0,
+                REGION_ID             INTEGER NOT NULL DEFAULT 0,
+                OWNER_CORPORATION_ID  INTEGER NULL,
+                IS_MANUAL_ENTRY       INTEGER NOT NULL DEFAULT 0,
+                UPDATED_AT_UTC        TEXT    NOT NULL,
+                PRIMARY KEY (STRUCTURE_ID)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS INDUSTRY_FACILITY_CONFIGURATIONS (
+                CHARACTER_ID                   INTEGER NOT NULL,
+                PRODUCTION_TYPE                INTEGER NOT NULL,
+                FACILITY_ID                    INTEGER NOT NULL,
+                FACILITY_NAME                  TEXT    NOT NULL,
+                FACILITY_KIND                  INTEGER NOT NULL DEFAULT 0,
+                REGION_ID                      INTEGER NOT NULL DEFAULT 0,
+                REGION_NAME                    TEXT    NOT NULL DEFAULT '',
+                SOLAR_SYSTEM_ID                INTEGER NOT NULL DEFAULT 0,
+                SOLAR_SYSTEM_NAME              TEXT    NOT NULL DEFAULT '',
+                SOLAR_SYSTEM_SECURITY          REAL    NOT NULL DEFAULT 0,
+                COST_INDEX                     REAL    NOT NULL DEFAULT 0,
+                ACTIVITY_COST_PER_SECOND       REAL    NOT NULL DEFAULT 0,
+                INCLUDE_ACTIVITY_COST          INTEGER NOT NULL DEFAULT 0,
+                INCLUDE_ACTIVITY_TIME          INTEGER NOT NULL DEFAULT 0,
+                INCLUDE_ACTIVITY_USAGE         INTEGER NOT NULL DEFAULT 0,
+                CONVERT_TO_ORE                 INTEGER NOT NULL DEFAULT 0,
+                FACTION_WARFARE_UPGRADE_LEVEL  INTEGER NOT NULL DEFAULT -1,
+                TAX_RATE                       REAL    NOT NULL DEFAULT 0,
+                MATERIAL_MULTIPLIER_OVERRIDE   REAL    NULL,
+                TIME_MULTIPLIER_OVERRIDE       REAL    NULL,
+                COST_MULTIPLIER_OVERRIDE       REAL    NULL,
+                PRIMARY KEY (CHARACTER_ID, PRODUCTION_TYPE)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS INDUSTRY_FACILITY_MODULES (
+                CHARACTER_ID     INTEGER NOT NULL,
+                PRODUCTION_TYPE  INTEGER NOT NULL,
+                FACILITY_ID      INTEGER NOT NULL,
+                MODULE_TYPE_ID   INTEGER NOT NULL,
+                PRIMARY KEY (CHARACTER_ID, PRODUCTION_TYPE, FACILITY_ID, MODULE_TYPE_ID)
             )
             """);
 

@@ -22,4 +22,6 @@ public sealed record CorporationConnectionRecord(
     CharacterId AuthorizedCharacterId,
     bool HasAssetAccess,
     bool HasIndustryJobAccess,
-    bool HasBlueprintAccess);
+    bool HasBlueprintAccess,
+    bool HasDirectorRole = false,
+    bool HasFactoryManagerRole = false);

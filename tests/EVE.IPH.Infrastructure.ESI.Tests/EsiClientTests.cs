@@ -90,6 +90,66 @@ public sealed class EsiClientTests
                 result.Value[0].ItemName.Should().Be("Ammo Copy");
         }
 
+        [Fact]
+        public async Task GetCorporationRolesAsync_FiltersAndFlattensRolesForAuthenticatedCharacter()
+        {
+                const string payload = """
+                        [
+                            {
+                                "character_id": 12345,
+                                "roles": ["Director"],
+                                "roles_at_base": ["Factory_Manager"],
+                                "roles_at_hq": [],
+                                "roles_at_other": []
+                            },
+                            {
+                                "character_id": 54321,
+                                "roles": ["Director"],
+                                "roles_at_base": [],
+                                "roles_at_hq": [],
+                                "roles_at_other": []
+                            }
+                        ]
+                        """;
+
+                EsiClient client = CreateClient(payload);
+
+                var result = await client.GetCorporationRolesAsync(new CorporationId(98000001), new CharacterId(12345));
+
+                result.IsSuccess.Should().BeTrue();
+                result.Value.Should().BeEquivalentTo(["Director", "Factory_Manager"]);
+        }
+
+        [Fact]
+        public async Task GetCorporationBlueprintsAsync_MapsBlueprintList()
+        {
+                const string payload = """
+                        [
+                            {
+                                "item_id": 7000001,
+                                "location_id": 60015068,
+                                "type_id": 28607,
+                                "quantity": -1,
+                                "time_efficiency": 14,
+                                "material_efficiency": 9,
+                                "runs": -1
+                            }
+                        ]
+                        """;
+
+                EsiClient client = CreateClient(payload);
+
+                var result = await client.GetCorporationBlueprintsAsync(new CorporationId(98000001), new CharacterId(12345));
+
+                result.IsSuccess.Should().BeTrue();
+                result.Value.Should().ContainSingle();
+                result.Value[0].OwnerId.Should().Be(98000001);
+                result.Value[0].ItemId.Value.Should().Be(7000001);
+                result.Value[0].BlueprintId.Value.Should().Be(28607);
+                result.Value[0].Me.Should().Be(9);
+                result.Value[0].Te.Should().Be(14);
+        }
+
     [Fact]
     public async Task GetStandingsAsync_OnHttpFailure_ReturnsFailureResult()
     {

@@ -12,8 +12,13 @@ public partial class IndustryJobsView : UserControl
 
     private IndustryJobsViewModel? ViewModel => DataContext as IndustryJobsViewModel;
 
-    private void RefreshIndustryJobs_Click(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
+    private async void RefreshIndustryJobs_Click(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
     {
-        ViewModel?.Refresh();
+        if (ViewModel is null)
+        {
+            return;
+        }
+
+        await ViewModel.RefreshAsync();
     }
 }

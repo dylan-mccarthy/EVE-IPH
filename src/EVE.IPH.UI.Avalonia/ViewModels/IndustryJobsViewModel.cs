@@ -7,17 +7,24 @@ namespace EVE.IPH.UI.Avalonia.ViewModels;
 
 public sealed class IndustryJobsViewModel : ObservableObject
 {
-    private readonly IIndustryJobsScreenService _industryJobsScreenService;
+    private readonly IIndustryJobsQueryService _industryJobsQueryService;
+    private readonly IIndustryJobsCommandService _industryJobsCommandService;
     private IndustryJobSummary _summary = new(0, 0, 0, 0, 0, 0);
     private IReadOnlyList<IndustryJobDisplayRow> _items = [];
+    private string _statusText = "Loading industry jobs...";
     private bool _isRefreshing;
 
-    public IndustryJobsViewModel(IIndustryJobsScreenService industryJobsScreenService)
+    public IndustryJobsViewModel(
+        IIndustryJobsQueryService industryJobsQueryService,
+        IIndustryJobsCommandService industryJobsCommandService)
     {
-        _industryJobsScreenService = industryJobsScreenService ?? throw new ArgumentNullException(nameof(industryJobsScreenService));
+        _industryJobsQueryService = industryJobsQueryService ?? throw new ArgumentNullException(nameof(industryJobsQueryService));
+        _industryJobsCommandService = industryJobsCommandService ?? throw new ArgumentNullException(nameof(industryJobsCommandService));
 
-        Refresh();
+        LoadTask = RefreshAsync(loadOnly: true);
     }
+
+    public Task LoadTask { get; }
 
     public IndustryJobSummary Summary
     {
@@ -57,12 +64,26 @@ public sealed class IndustryJobsViewModel : ObservableObject
 
     public bool CanRefresh => !IsRefreshing;
 
+    public string StatusText
+    {
+        get => _statusText;
+        private set
+        {
+            if (SetProperty(ref _statusText, value))
+            {
+                OnPropertyChanged(nameof(SummaryText));
+            }
+        }
+    }
+
     public string SummaryText =>
         Items.Count == 0
-            ? "No synced industry jobs were found yet. Current jobs will appear here after the missing industry-job repository and ESI refresh seams are wired."
+            ? StatusText
             : $"Manufacturing: {Summary.CurrentManufacturingJobs} | Research: {Summary.CurrentResearchJobs} | Reactions: {Summary.CurrentReactionJobs} | Pending: {Summary.PendingJobs} | In Progress: {Summary.InProgressJobs} | Complete: {Summary.CompleteJobs}";
 
-    public void Refresh()
+    public Task RefreshAsync() => RefreshAsync(loadOnly: false);
+
+    private async Task RefreshAsync(bool loadOnly)
     {
         if (IsRefreshing)
         {
@@ -72,9 +93,12 @@ public sealed class IndustryJobsViewModel : ObservableObject
         try
         {
             IsRefreshing = true;
-            IndustryJobsScreenData screenData = _industryJobsScreenService.GetScreenData(DateTimeOffset.UtcNow);
+            IndustryJobsScreenData screenData = loadOnly
+                ? await _industryJobsQueryService.GetScreenDataAsync(DateTimeOffset.UtcNow).ConfigureAwait(false)
+                : await _industryJobsCommandService.RefreshAsync(DateTimeOffset.UtcNow).ConfigureAwait(false);
             Summary = screenData.Summary;
             Items = screenData.Rows;
+            StatusText = screenData.StatusText;
         }
         finally
         {

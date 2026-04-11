@@ -40,6 +40,7 @@ public static class EsiServiceCollectionExtensions
         services.AddTransient<ICharacterDataSource, EsiCharacterDataSource>();
         services.AddTransient<ICharacterResearchAgentDataSource, EsiCharacterResearchAgentDataSource>();
         services.AddTransient<IIndustryJobDataSource, EsiIndustryJobDataSource>();
+        services.AddTransient<IOwnedBlueprintDataSource, EsiOwnedBlueprintDataSource>();
         services.AddTransient<IMarketPriceSourceResolver, MarketPriceSourceResolver>();
 
         services

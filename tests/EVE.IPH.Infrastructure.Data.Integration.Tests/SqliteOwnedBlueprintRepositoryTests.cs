@@ -83,6 +83,54 @@ public sealed class SqliteOwnedBlueprintRepositoryTests : IDisposable
         result.Value.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task ReplaceAsync_ReplacesBlueprintsForOneOwnerOnly()
+    {
+        await _sut.UpsertAsync(BuildRecord(5, 5001));
+        await _sut.UpsertAsync(BuildRecord(99, 9901));
+
+        Result<IReadOnlyList<OwnedBlueprintRecord>> result = await _sut.ReplaceAsync(5, [
+            BuildRecord(5, 5002, me: 7, te: 14),
+        ]);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle();
+        result.Value[0].BlueprintId.Value.Should().Be(5002);
+
+        Result<IReadOnlyList<OwnedBlueprintRecord>> otherOwner = await _sut.GetByUserAsync(99);
+        otherOwner.Value.Should().ContainSingle();
+        otherOwner.Value[0].BlueprintId.Value.Should().Be(9901);
+    }
+
+    [Fact]
+    public async Task GetByUsersAsync_ReturnsBlueprintsAcrossOwners()
+    {
+        await _sut.UpsertAsync(BuildRecord(6, 6001));
+        await _sut.UpsertAsync(BuildRecord(7, 7001));
+        await _sut.UpsertAsync(BuildRecord(8, 8001));
+
+        Result<IReadOnlyList<OwnedBlueprintRecord>> result = await _sut.GetByUsersAsync([6, 7]);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(2);
+        result.Value.Select(record => record.UserId).Should().BeEquivalentTo([6L, 7L]);
+    }
+
+    [Fact]
+    public async Task DeleteByUserAsync_RemovesAllBlueprintsForOwner()
+    {
+        await _sut.UpsertAsync(BuildRecord(9, 9001));
+        await _sut.UpsertAsync(BuildRecord(9, 9002));
+
+        Result<bool> result = await _sut.DeleteByUserAsync(9);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeTrue();
+
+        Result<IReadOnlyList<OwnedBlueprintRecord>> remaining = await _sut.GetByUserAsync(9);
+        remaining.Value.Should().BeEmpty();
+    }
+
     private static OwnedBlueprintRecord BuildRecord(long userId, long blueprintId, int me = 0, int te = 0) =>
         new(userId, new ItemId(blueprintId + 10_000), LocationId: 0, new BlueprintId(blueprintId),
             $"Blueprint {blueprintId}", Quantity: 1, me, te, Runs: -1, BpType: 1, Owned: true, Scanned: false);

@@ -21,7 +21,7 @@ public sealed class SqliteCorporationConnectionRepository : ICorporationConnecti
         try
         {
             using System.Data.IDbConnection connection = _connectionFactory.CreateConnection();
-            const string sql = "SELECT CORPORATION_ID, CORPORATION_NAME, AUTHORIZED_CHARACTER_ID, HAS_ASSET_ACCESS, HAS_INDUSTRY_JOB_ACCESS, HAS_BLUEPRINT_ACCESS FROM ESI_CORPORATION_CONNECTIONS ORDER BY CORPORATION_NAME";
+            const string sql = "SELECT CORPORATION_ID, CORPORATION_NAME, AUTHORIZED_CHARACTER_ID, HAS_ASSET_ACCESS, HAS_INDUSTRY_JOB_ACCESS, HAS_BLUEPRINT_ACCESS, HAS_DIRECTOR_ROLE, HAS_FACTORY_MANAGER_ROLE FROM ESI_CORPORATION_CONNECTIONS ORDER BY CORPORATION_NAME";
 
             IEnumerable<CorporationConnectionDto> rows = await connection.QueryAsync<CorporationConnectionDto>(
                 new CommandDefinition(sql, cancellationToken: cancellationToken)).ConfigureAwait(false);
@@ -39,7 +39,7 @@ public sealed class SqliteCorporationConnectionRepository : ICorporationConnecti
         try
         {
             using System.Data.IDbConnection connection = _connectionFactory.CreateConnection();
-            const string sql = "SELECT CORPORATION_ID, CORPORATION_NAME, AUTHORIZED_CHARACTER_ID, HAS_ASSET_ACCESS, HAS_INDUSTRY_JOB_ACCESS, HAS_BLUEPRINT_ACCESS FROM ESI_CORPORATION_CONNECTIONS WHERE CORPORATION_ID = @CorporationId";
+            const string sql = "SELECT CORPORATION_ID, CORPORATION_NAME, AUTHORIZED_CHARACTER_ID, HAS_ASSET_ACCESS, HAS_INDUSTRY_JOB_ACCESS, HAS_BLUEPRINT_ACCESS, HAS_DIRECTOR_ROLE, HAS_FACTORY_MANAGER_ROLE FROM ESI_CORPORATION_CONNECTIONS WHERE CORPORATION_ID = @CorporationId";
 
             CorporationConnectionDto? row = await connection.QueryFirstOrDefaultAsync<CorporationConnectionDto>(
                 new CommandDefinition(sql, new { CorporationId = corporationId.Value }, cancellationToken: cancellationToken)).ConfigureAwait(false);
@@ -58,14 +58,16 @@ public sealed class SqliteCorporationConnectionRepository : ICorporationConnecti
         {
             using System.Data.IDbConnection dbConnection = _connectionFactory.CreateConnection();
             const string sql = """
-                INSERT INTO ESI_CORPORATION_CONNECTIONS (CORPORATION_ID, CORPORATION_NAME, AUTHORIZED_CHARACTER_ID, HAS_ASSET_ACCESS, HAS_INDUSTRY_JOB_ACCESS, HAS_BLUEPRINT_ACCESS)
-                VALUES (@CorporationId, @CorporationName, @AuthorizedCharacterId, @HasAssetAccess, @HasIndustryJobAccess, @HasBlueprintAccess)
+                INSERT INTO ESI_CORPORATION_CONNECTIONS (CORPORATION_ID, CORPORATION_NAME, AUTHORIZED_CHARACTER_ID, HAS_ASSET_ACCESS, HAS_INDUSTRY_JOB_ACCESS, HAS_BLUEPRINT_ACCESS, HAS_DIRECTOR_ROLE, HAS_FACTORY_MANAGER_ROLE)
+                VALUES (@CorporationId, @CorporationName, @AuthorizedCharacterId, @HasAssetAccess, @HasIndustryJobAccess, @HasBlueprintAccess, @HasDirectorRole, @HasFactoryManagerRole)
                 ON CONFLICT(CORPORATION_ID) DO UPDATE SET
                     CORPORATION_NAME = excluded.CORPORATION_NAME,
                     AUTHORIZED_CHARACTER_ID = excluded.AUTHORIZED_CHARACTER_ID,
                     HAS_ASSET_ACCESS = excluded.HAS_ASSET_ACCESS,
                     HAS_INDUSTRY_JOB_ACCESS = excluded.HAS_INDUSTRY_JOB_ACCESS,
-                    HAS_BLUEPRINT_ACCESS = excluded.HAS_BLUEPRINT_ACCESS
+                    HAS_BLUEPRINT_ACCESS = excluded.HAS_BLUEPRINT_ACCESS,
+                    HAS_DIRECTOR_ROLE = excluded.HAS_DIRECTOR_ROLE,
+                    HAS_FACTORY_MANAGER_ROLE = excluded.HAS_FACTORY_MANAGER_ROLE
                 """;
 
             await dbConnection.ExecuteAsync(
@@ -79,6 +81,8 @@ public sealed class SqliteCorporationConnectionRepository : ICorporationConnecti
                         HasAssetAccess = connection.HasAssetAccess ? 1 : 0,
                         HasIndustryJobAccess = connection.HasIndustryJobAccess ? 1 : 0,
                         HasBlueprintAccess = connection.HasBlueprintAccess ? 1 : 0,
+                        HasDirectorRole = connection.HasDirectorRole ? 1 : 0,
+                        HasFactoryManagerRole = connection.HasFactoryManagerRole ? 1 : 0,
                     },
                     cancellationToken: cancellationToken)).ConfigureAwait(false);
 
@@ -134,7 +138,9 @@ public sealed class SqliteCorporationConnectionRepository : ICorporationConnecti
         new CharacterId(row.AUTHORIZED_CHARACTER_ID),
         row.HAS_ASSET_ACCESS == 1,
         row.HAS_INDUSTRY_JOB_ACCESS == 1,
-        row.HAS_BLUEPRINT_ACCESS == 1);
+        row.HAS_BLUEPRINT_ACCESS == 1,
+        row.HAS_DIRECTOR_ROLE == 1,
+        row.HAS_FACTORY_MANAGER_ROLE == 1);
 
     private sealed class CorporationConnectionDto
     {
@@ -144,5 +150,7 @@ public sealed class SqliteCorporationConnectionRepository : ICorporationConnecti
         public int HAS_ASSET_ACCESS { get; init; }
         public int HAS_INDUSTRY_JOB_ACCESS { get; init; }
         public int HAS_BLUEPRINT_ACCESS { get; init; }
+        public int HAS_DIRECTOR_ROLE { get; init; }
+        public int HAS_FACTORY_MANAGER_ROLE { get; init; }
     }
 }

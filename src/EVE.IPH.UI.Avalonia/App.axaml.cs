@@ -5,9 +5,11 @@ using EVE.IPH.Domain.Assets.Services;
 using EVE.IPH.Domain.Characters.Services;
 using EVE.IPH.Domain.Core.Interfaces;
 using EVE.IPH.Domain.Industry.Services;
+using EVE.IPH.Domain.Manufacturing.Services;
 using EVE.IPH.Infrastructure.Data.Connections;
 using EVE.IPH.Infrastructure.Data.Repositories.App;
 using EVE.IPH.Infrastructure.Data.Repositories.Sde;
+using EVE.IPH.Infrastructure.ESI;
 using EVE.IPH.Infrastructure.ESI.DependencyInjection;
 using EVE.IPH.Infrastructure.Settings;
 using EVE.IPH.Infrastructure.Settings.Models;
@@ -61,9 +63,11 @@ public partial class App : Application
         services.AddSingleton<ICharacterService, CharacterService>();
         services.AddSingleton<ICharacterIndustryJobService, CharacterIndustryJobService>();
         services.AddSingleton<ICorporationIndustryJobService, CorporationIndustryJobService>();
+        services.AddSingleton<ICorporationBlueprintService, CorporationBlueprintService>();
         services.AddSingleton<IIndustryJobService, IndustryJobService>();
         services.AddSingleton<IIndustryJobPresentationService, IndustryJobPresentationService>();
         services.AddSingleton<IResearchAgentDatacoreService, ResearchAgentDatacoreService>();
+        services.AddSingleton<ICorporationCapabilityResolver, EsiCorporationCapabilityResolver>();
         services.AddSingleton(staticDataSettings);
 
         services.AddSingleton<IDbConnectionFactory>(_ => new SqliteConnectionFactory($"Data Source={databasePath}"));
@@ -74,21 +78,29 @@ public partial class App : Application
         services.AddSingleton<ICharacterStandingRepository, SqliteCharacterStandingRepository>();
         services.AddSingleton<ICharacterResearchAgentRepository, SqliteCharacterResearchAgentRepository>();
         services.AddSingleton<IIndustryJobRepository, SqliteIndustryJobRepository>();
+        services.AddSingleton<IIndustryFacilityRepository, SqliteIndustryFacilityRepository>();
+        services.AddSingleton<IOwnedBlueprintRepository, SqliteOwnedBlueprintRepository>();
         services.AddSingleton<IAssetReadRepository, SqliteAssetReadRepository>();
         services.AddSingleton<IIndustryJobReadRepository, SqliteIndustryJobReadRepository>();
+        services.AddSingleton<IOwnedBlueprintViewRepository, SqliteOwnedBlueprintReadRepository>();
         services.AddSingleton<IResearchAgentDefinitionRepository, SqliteResearchAgentDefinitionRepository>();
         services.AddSingleton<IItemRepository, SqliteItemRepository>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IResearchAgentService, ResearchAgentService>();
+        services.AddSingleton<IManufacturingFacilityConfigurationService, ManufacturingFacilityConfigurationService>();
+        services.AddSingleton<IOwnedBlueprintWorkflowService, OwnedBlueprintWorkflowService>();
 
         services.AddSingleton<IPhase11SampleDataProvider, Phase11SampleDataProvider>();
         services.AddSingleton<IApplicationRestartService, ApplicationRestartService>();
         services.AddSingleton<IModalDialogService, ModalDialogService>();
-        services.AddSingleton<ICharacterManagementService, CharacterManagementService>();
+        services.AddSingleton<ICharacterManagementQueryService, CharacterManagementQueryService>();
+        services.AddSingleton<ICharacterManagementCommandService, CharacterManagementService>();
         services.AddSingleton<IShellDialogService, ShellDialogService>();
         services.AddSingleton<ILegacyDatabaseImportService, LegacyDatabaseImportService>();
-        services.AddSingleton<IAssetsScreenService, AssetsScreenService>();
-        services.AddSingleton<IIndustryJobsScreenService, IndustryJobsScreenService>();
+        services.AddSingleton<IAssetsQueryService, AssetsQueryService>();
+        services.AddSingleton<IAssetsCommandService, AssetsCommandService>();
+        services.AddSingleton<IIndustryJobsQueryService, IndustryJobsQueryService>();
+        services.AddSingleton<IIndustryJobsCommandService, IndustryJobsCommandService>();
         services.AddSingleton<IResearchAgentsScreenService>(provider =>
             new ResearchAgentsScreenService(
                 provider.GetRequiredService<IPhase11SampleDataProvider>(),

@@ -5,13 +5,15 @@ using EVE.IPH.Domain.Core;
 using EVE.IPH.Domain.Core.Identifiers;
 using EVE.IPH.Domain.Core.Interfaces;
 using EVE.IPH.Domain.Core.Results;
+using EVE.IPH.Domain.Industry.Models;
 using EVE.IPH.Domain.Industry.Services;
+using EVE.IPH.Domain.Manufacturing.Services;
 using EVE.IPH.Infrastructure.ESI;
 using EVE.IPH.Infrastructure.ESI.Interfaces;
 
 namespace EVE.IPH.UI.Avalonia.Services;
 
-public sealed class CharacterManagementService : ICharacterManagementService
+public sealed class CharacterManagementService : ICharacterManagementCommandService
 {
     private static readonly string[] RequiredScopes =
     [
@@ -21,21 +23,18 @@ public sealed class CharacterManagementService : ICharacterManagementService
         "esi-industry.read_character_jobs.v1",
     ];
 
-    private static readonly string[] CorporationDataScopes =
-    [
-        "esi-assets.read_corporation_assets",
-        "esi-industry.read_corporation_jobs",
-        "esi-corporations.read_blueprints",
-    ];
-
     private readonly ICharacterRepository _characterRepository;
     private readonly IAssetRepository _assetRepository;
     private readonly ICharacterAssetService _characterAssetService;
     private readonly ICorporationAssetService _corporationAssetService;
+    private readonly ICorporationBlueprintService _corporationBlueprintService;
+    private readonly ICorporationCapabilityResolver _corporationCapabilityResolver;
     private readonly ICorporationConnectionRepository _corporationConnectionRepository;
     private readonly ICharacterService _characterService;
     private readonly ICharacterIndustryJobService _characterIndustryJobService;
     private readonly ICorporationIndustryJobService _corporationIndustryJobService;
+    private readonly IIndustryJobRepository _industryJobRepository;
+    private readonly IOwnedBlueprintRepository _ownedBlueprintRepository;
     private readonly IEsiClient _esiClient;
     private readonly IEsiInteractiveLoginService _interactiveLoginService;
     private readonly IResearchAgentService _researchAgentService;
@@ -46,10 +45,14 @@ public sealed class CharacterManagementService : ICharacterManagementService
         IAssetRepository assetRepository,
         ICharacterAssetService characterAssetService,
         ICorporationAssetService corporationAssetService,
+        ICorporationBlueprintService corporationBlueprintService,
+        ICorporationCapabilityResolver corporationCapabilityResolver,
         ICorporationConnectionRepository corporationConnectionRepository,
         ICharacterService characterService,
         ICharacterIndustryJobService characterIndustryJobService,
         ICorporationIndustryJobService corporationIndustryJobService,
+        IIndustryJobRepository industryJobRepository,
+        IOwnedBlueprintRepository ownedBlueprintRepository,
         IEsiClient esiClient,
         IEsiInteractiveLoginService interactiveLoginService,
         IResearchAgentService researchAgentService,
@@ -59,44 +62,19 @@ public sealed class CharacterManagementService : ICharacterManagementService
         _assetRepository = assetRepository ?? throw new ArgumentNullException(nameof(assetRepository));
         _characterAssetService = characterAssetService ?? throw new ArgumentNullException(nameof(characterAssetService));
         _corporationAssetService = corporationAssetService ?? throw new ArgumentNullException(nameof(corporationAssetService));
+        _corporationBlueprintService = corporationBlueprintService ?? throw new ArgumentNullException(nameof(corporationBlueprintService));
+        _corporationCapabilityResolver = corporationCapabilityResolver ?? throw new ArgumentNullException(nameof(corporationCapabilityResolver));
         _corporationConnectionRepository = corporationConnectionRepository ?? throw new ArgumentNullException(nameof(corporationConnectionRepository));
         _characterService = characterService ?? throw new ArgumentNullException(nameof(characterService));
         _characterIndustryJobService = characterIndustryJobService ?? throw new ArgumentNullException(nameof(characterIndustryJobService));
         _corporationIndustryJobService = corporationIndustryJobService ?? throw new ArgumentNullException(nameof(corporationIndustryJobService));
+        _industryJobRepository = industryJobRepository ?? throw new ArgumentNullException(nameof(industryJobRepository));
+        _ownedBlueprintRepository = ownedBlueprintRepository ?? throw new ArgumentNullException(nameof(ownedBlueprintRepository));
         _esiClient = esiClient ?? throw new ArgumentNullException(nameof(esiClient));
         _interactiveLoginService = interactiveLoginService ?? throw new ArgumentNullException(nameof(interactiveLoginService));
         _researchAgentService = researchAgentService ?? throw new ArgumentNullException(nameof(researchAgentService));
         _tokenStore = tokenStore ?? throw new ArgumentNullException(nameof(tokenStore));
     }
-
-    public Task<Result<IReadOnlyList<CharacterRecord>>> GetCharactersAsync(CancellationToken cancellationToken = default) =>
-        _characterRepository.GetAllAsync(cancellationToken);
-
-    public async Task<Result<IReadOnlyList<CharacterTokenStatus>>> GetCharacterTokenStatusesAsync(CancellationToken cancellationToken = default)
-    {
-        Result<IReadOnlyList<CharacterRecord>> charactersResult = await _characterRepository
-            .GetAllAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        if (charactersResult.IsFailure)
-        {
-            return Result<IReadOnlyList<CharacterTokenStatus>>.Failure(charactersResult.Error);
-        }
-
-        List<CharacterTokenStatus> statuses = [];
-        DateTimeOffset now = DateTimeOffset.UtcNow;
-
-        foreach (CharacterRecord character in charactersResult.Value)
-        {
-            Maybe<EsiTokenRecord> token = await _tokenStore.ReadAsync(character.CharacterId, cancellationToken).ConfigureAwait(false);
-            statuses.Add(BuildTokenStatus(character.CharacterId, token, now));
-        }
-
-        return Result<IReadOnlyList<CharacterTokenStatus>>.Success(statuses);
-    }
-
-    public Task<Result<IReadOnlyList<CorporationConnectionRecord>>> GetCorporationsAsync(CancellationToken cancellationToken = default) =>
-        _corporationConnectionRepository.GetAllAsync(cancellationToken);
 
     public async Task<Result<CharacterRecord>> AuthenticateAndRefreshAsync(CancellationToken cancellationToken = default)
     {
@@ -208,38 +186,40 @@ public sealed class CharacterManagementService : ICharacterManagementService
             return Result<CorporationConnectionRecord>.Failure("TOKEN_NOT_FOUND", $"No stored ESI token was found for {character.Value.Name}. Refresh the character first.");
         }
 
-        IReadOnlyList<string> scopes = token.Value.Scopes;
-        bool hasAssetAccess = scopes.Contains(CorporationDataScopes[0], StringComparer.OrdinalIgnoreCase);
-        bool hasIndustryJobAccess = scopes.Contains(CorporationDataScopes[1], StringComparer.OrdinalIgnoreCase);
-        bool hasBlueprintAccess = scopes.Contains(CorporationDataScopes[2], StringComparer.OrdinalIgnoreCase);
+        CorporationId corporationId = character.Value.CorporationId;
+        Result<CorporationCapabilityState> capabilityResult = await _corporationCapabilityResolver
+            .ResolveAsync(corporationId, characterId, token.Value.Scopes, cancellationToken)
+            .ConfigureAwait(false);
 
-        if (!hasAssetAccess && !hasIndustryJobAccess && !hasBlueprintAccess)
+        if (capabilityResult.IsFailure)
         {
-            return Result<CorporationConnectionRecord>.Failure("CORPORATION_SCOPES_MISSING", "The selected character token does not include corporation assets, jobs, or blueprints scopes.");
+            return Result<CorporationConnectionRecord>.Failure(capabilityResult.Error);
         }
 
-        CorporationId corporationId = character.Value.CorporationId;
+        CorporationCapabilityState capability = capabilityResult.Value;
+        Result<bool> capabilityValidation = ValidateCapabilityForConnect(capability);
+        if (capabilityValidation.IsFailure)
+        {
+            return Result<CorporationConnectionRecord>.Failure(capabilityValidation.Error);
+        }
+
         string corporationName = await ResolveCorporationNameAsync(corporationId, cancellationToken).ConfigureAwait(false);
 
-        if (hasAssetAccess)
+        Result<bool> syncResult = await SyncCorporationDataAsync(corporationId, characterId, capability, cancellationToken).ConfigureAwait(false);
+        if (syncResult.IsFailure)
         {
-            Result<IReadOnlyList<EVE.IPH.Domain.Assets.Models.AssetRecord>> assetRefresh = await _corporationAssetService
-                .RefreshAsync(corporationId, characterId, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (assetRefresh.IsFailure)
-            {
-                return Result<CorporationConnectionRecord>.Failure(assetRefresh.Error);
-            }
+            return Result<CorporationConnectionRecord>.Failure(syncResult.Error);
         }
 
         CorporationConnectionRecord record = new(
             corporationId,
             corporationName,
             characterId,
-            hasAssetAccess,
-            hasIndustryJobAccess,
-            hasBlueprintAccess);
+            capability.HasAssetAccess,
+            capability.HasIndustryJobAccess,
+            capability.HasBlueprintAccess,
+            capability.HasDirectorRole,
+            capability.HasFactoryManagerRole);
 
         Result<CorporationConnectionRecord> upsertResult = await _corporationConnectionRepository
             .UpsertAsync(record, cancellationToken)
@@ -261,19 +241,52 @@ public sealed class CharacterManagementService : ICharacterManagementService
             return Result<CorporationConnectionRecord>.Failure("CORPORATION_NOT_FOUND", $"Corporation {corporationId.Value} was not found.");
         }
 
-        if (connection.Value.HasAssetAccess)
+        Maybe<EsiTokenRecord> token = await _tokenStore.ReadAsync(connection.Value.AuthorizedCharacterId, cancellationToken).ConfigureAwait(false);
+        CorporationCapabilityState capability;
+
+        if (token.HasValue)
         {
-            Result<IReadOnlyList<EVE.IPH.Domain.Assets.Models.AssetRecord>> assetRefresh = await _corporationAssetService
-                .RefreshAsync(corporationId, connection.Value.AuthorizedCharacterId, cancellationToken)
+            Result<CorporationCapabilityState> capabilityResult = await _corporationCapabilityResolver
+                .ResolveAsync(corporationId, connection.Value.AuthorizedCharacterId, token.Value.Scopes, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (assetRefresh.IsFailure)
+            if (capabilityResult.IsFailure)
             {
-                return Result<CorporationConnectionRecord>.Failure(assetRefresh.Error);
+                return Result<CorporationConnectionRecord>.Failure(capabilityResult.Error);
             }
+
+            capability = capabilityResult.Value;
+        }
+        else
+        {
+            capability = new CorporationCapabilityState(false, false, false, false, false, false, false, false, false);
         }
 
-        return Result<CorporationConnectionRecord>.Success(connection.Value);
+        Result<bool> syncResult = await SyncCorporationDataAsync(corporationId, connection.Value.AuthorizedCharacterId, capability, cancellationToken).ConfigureAwait(false);
+        if (syncResult.IsFailure)
+        {
+            return Result<CorporationConnectionRecord>.Failure(syncResult.Error);
+        }
+
+        CorporationConnectionRecord updatedConnection = connection.Value with
+        {
+            HasAssetAccess = capability.HasAssetAccess,
+            HasIndustryJobAccess = capability.HasIndustryJobAccess,
+            HasBlueprintAccess = capability.HasBlueprintAccess,
+            HasDirectorRole = capability.HasDirectorRole,
+            HasFactoryManagerRole = capability.HasFactoryManagerRole,
+        };
+
+        Result<CorporationConnectionRecord> upsertResult = await _corporationConnectionRepository
+            .UpsertAsync(updatedConnection, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (upsertResult.IsFailure)
+        {
+            return Result<CorporationConnectionRecord>.Failure(upsertResult.Error);
+        }
+
+        return Result<CorporationConnectionRecord>.Success(updatedConnection);
     }
 
     public async Task<Result<IReadOnlyList<CharacterRecord>>> SetDefaultAsync(CharacterId characterId, CancellationToken cancellationToken = default)
@@ -336,6 +349,37 @@ public sealed class CharacterManagementService : ICharacterManagementService
             return Result<IReadOnlyList<CharacterRecord>>.Failure("CHARACTER_NOT_FOUND", $"Character {characterId.Value} was not found.");
         }
 
+        Result<IReadOnlyList<CorporationConnectionRecord>> corporationConnectionsResult = await _corporationConnectionRepository
+            .GetAllAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (corporationConnectionsResult.IsFailure)
+        {
+            return Result<IReadOnlyList<CharacterRecord>>.Failure(corporationConnectionsResult.Error);
+        }
+
+        IReadOnlyList<CorporationConnectionRecord> authorizedCorporations = corporationConnectionsResult.Value
+            .Where(connection => connection.AuthorizedCharacterId == characterId)
+            .ToArray();
+
+        foreach (CorporationConnectionRecord corporation in authorizedCorporations)
+        {
+            Result<IReadOnlyList<CorporationConnectionRecord>> corporationDeleteResult = await DeleteCorporationAsync(corporation.CorporationId, cancellationToken)
+                .ConfigureAwait(false);
+            if (corporationDeleteResult.IsFailure)
+            {
+                return Result<IReadOnlyList<CharacterRecord>>.Failure(corporationDeleteResult.Error);
+            }
+        }
+
+        Result<IReadOnlyList<IndustryJobRecord>> personalIndustryJobDeleteResult = await _industryJobRepository
+            .ReplaceAsync(characterId, IndustryJobScope.Personal, [], cancellationToken)
+            .ConfigureAwait(false);
+        if (personalIndustryJobDeleteResult.IsFailure)
+        {
+            return Result<IReadOnlyList<CharacterRecord>>.Failure(personalIndustryJobDeleteResult.Error);
+        }
+
         Result<bool> deleteResult = await _characterRepository.DeleteAsync(characterId, cancellationToken).ConfigureAwait(false);
         if (deleteResult.IsFailure)
         {
@@ -347,8 +391,23 @@ public sealed class CharacterManagementService : ICharacterManagementService
             return Result<IReadOnlyList<CharacterRecord>>.Failure("CHARACTER_NOT_FOUND", $"Character {characterId.Value} was not found.");
         }
 
-        Result<bool> _assetDelete = await _assetRepository.DeleteByOwnerIdAsync(characterId.Value, cancellationToken).ConfigureAwait(false);
-        Result<bool> _ = await _tokenStore.ClearAsync(characterId, cancellationToken).ConfigureAwait(false);
+        Result<bool> assetDeleteResult = await _assetRepository.DeleteByOwnerIdAsync(characterId.Value, cancellationToken).ConfigureAwait(false);
+        if (assetDeleteResult.IsFailure)
+        {
+            return Result<IReadOnlyList<CharacterRecord>>.Failure(assetDeleteResult.Error);
+        }
+
+        Result<bool> blueprintDeleteResult = await _ownedBlueprintRepository.DeleteByUserAsync(characterId.Value, cancellationToken).ConfigureAwait(false);
+        if (blueprintDeleteResult.IsFailure)
+        {
+            return Result<IReadOnlyList<CharacterRecord>>.Failure(blueprintDeleteResult.Error);
+        }
+
+        Result<bool> tokenDeleteResult = await _tokenStore.ClearAsync(characterId, cancellationToken).ConfigureAwait(false);
+        if (tokenDeleteResult.IsFailure)
+        {
+            return Result<IReadOnlyList<CharacterRecord>>.Failure(tokenDeleteResult.Error);
+        }
 
         Result<IReadOnlyList<CharacterRecord>> remainingCharacters = await _characterRepository.GetAllAsync(cancellationToken).ConfigureAwait(false);
         if (remainingCharacters.IsFailure)
@@ -375,6 +434,18 @@ public sealed class CharacterManagementService : ICharacterManagementService
 
     public async Task<Result<IReadOnlyList<CorporationConnectionRecord>>> DeleteCorporationAsync(CorporationId corporationId, CancellationToken cancellationToken = default)
     {
+        Result<bool> industryJobDeleteResult = await ClearCorporationIndustryJobsAsync(corporationId, cancellationToken).ConfigureAwait(false);
+        if (industryJobDeleteResult.IsFailure)
+        {
+            return Result<IReadOnlyList<CorporationConnectionRecord>>.Failure(industryJobDeleteResult.Error);
+        }
+
+        Result<bool> blueprintDeleteResult = await _ownedBlueprintRepository.DeleteByUserAsync(corporationId.Value, cancellationToken).ConfigureAwait(false);
+        if (blueprintDeleteResult.IsFailure)
+        {
+            return Result<IReadOnlyList<CorporationConnectionRecord>>.Failure(blueprintDeleteResult.Error);
+        }
+
         Result<bool> assetDeleteResult = await _assetRepository.DeleteByOwnerIdAsync(corporationId.Value, cancellationToken).ConfigureAwait(false);
         if (assetDeleteResult.IsFailure)
         {
@@ -411,6 +482,149 @@ public sealed class CharacterManagementService : ICharacterManagementService
             .ConfigureAwait(false);
     }
 
+    private async Task<Result<bool>> SyncCorporationDataAsync(
+        CorporationId corporationId,
+        CharacterId authorizedCharacterId,
+        CorporationCapabilityState capability,
+        CancellationToken cancellationToken)
+    {
+        if (capability.HasAssetAccess)
+        {
+            Result<IReadOnlyList<EVE.IPH.Domain.Assets.Models.AssetRecord>> assetRefresh = await _corporationAssetService
+                .RefreshAsync(corporationId, authorizedCharacterId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (assetRefresh.IsFailure)
+            {
+                return Result<bool>.Failure(assetRefresh.Error);
+            }
+        }
+        else
+        {
+            Result<bool> assetDelete = await _assetRepository.DeleteByOwnerIdAsync(corporationId.Value, cancellationToken).ConfigureAwait(false);
+            if (assetDelete.IsFailure)
+            {
+                return Result<bool>.Failure(assetDelete.Error);
+            }
+        }
+
+        if (capability.HasIndustryJobAccess)
+        {
+            Result<CorporationIndustryJobSnapshot> jobRefresh = await _corporationIndustryJobService
+                .RefreshAsync(corporationId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (jobRefresh.IsFailure)
+            {
+                return Result<bool>.Failure(jobRefresh.Error);
+            }
+        }
+        else
+        {
+            Result<bool> industryJobDelete = await ClearCorporationIndustryJobsAsync(corporationId, cancellationToken).ConfigureAwait(false);
+            if (industryJobDelete.IsFailure)
+            {
+                return Result<bool>.Failure(industryJobDelete.Error);
+            }
+        }
+
+        if (capability.HasBlueprintAccess)
+        {
+            Result<IReadOnlyList<OwnedBlueprintRecord>> blueprintRefresh = await _corporationBlueprintService
+                .RefreshAsync(corporationId, authorizedCharacterId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (blueprintRefresh.IsFailure)
+            {
+                return Result<bool>.Failure(blueprintRefresh.Error);
+            }
+        }
+        else
+        {
+            Result<bool> blueprintDelete = await _ownedBlueprintRepository.DeleteByUserAsync(corporationId.Value, cancellationToken).ConfigureAwait(false);
+            if (blueprintDelete.IsFailure)
+            {
+                return Result<bool>.Failure(blueprintDelete.Error);
+            }
+        }
+
+        return Result<bool>.Success(true);
+    }
+
+    private async Task<Result<bool>> ClearCorporationIndustryJobsAsync(CorporationId corporationId, CancellationToken cancellationToken)
+    {
+        Result<IReadOnlyList<CharacterRecord>> charactersResult = await _characterRepository
+            .GetAllAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (charactersResult.IsFailure)
+        {
+            return Result<bool>.Failure(charactersResult.Error);
+        }
+
+        CharacterId[] installerIds = charactersResult.Value
+            .Where(character => character.CorporationId == corporationId)
+            .Select(character => character.CharacterId)
+            .Distinct()
+            .ToArray();
+
+        foreach (CharacterId installerId in installerIds)
+        {
+            Result<IReadOnlyList<IndustryJobRecord>> replaceResult = await _industryJobRepository
+                .ReplaceAsync(installerId, IndustryJobScope.Corporation, [], cancellationToken)
+                .ConfigureAwait(false);
+
+            if (replaceResult.IsFailure)
+            {
+                return Result<bool>.Failure(replaceResult.Error);
+            }
+        }
+
+        return Result<bool>.Success(true);
+    }
+
+    private static Result<bool> ValidateCapabilityForConnect(CorporationCapabilityState capability)
+    {
+        if (!capability.HasAnyCorporationScope)
+        {
+            return Result<bool>.Failure("CORPORATION_SCOPES_MISSING", "The selected character token does not include corporation assets, jobs, or blueprints scopes.");
+        }
+
+        if (!capability.HasMembershipScope)
+        {
+            return Result<bool>.Failure("CORPORATION_MEMBERSHIP_SCOPE_MISSING", "The selected character token must include corporation membership scope to verify corporation roles.");
+        }
+
+        if (!capability.HasAnyAccess)
+        {
+            return Result<bool>.Failure("CORPORATION_ROLES_MISSING", BuildMissingCapabilityMessage(capability));
+        }
+
+        return Result<bool>.Success(true);
+    }
+
+    private static string BuildMissingCapabilityMessage(CorporationCapabilityState capability)
+    {
+        List<string> missingRequirements = [];
+
+        if ((capability.HasAssetScope || capability.HasBlueprintScope) && !capability.HasDirectorRole)
+        {
+            missingRequirements.Add("Director role for corporation assets and blueprints");
+        }
+
+        if (capability.HasIndustryJobScope && !capability.HasFactoryManagerRole)
+        {
+            missingRequirements.Add("Factory Manager role for corporation industry jobs");
+        }
+
+        if (missingRequirements.Count == 0)
+        {
+            missingRequirements.Add("the required corporation roles");
+        }
+
+        return $"The authenticated character token includes corporation scopes, but the character does not have {string.Join(" and ", missingRequirements)}.";
+    }
+
     private async Task<string> ResolveCorporationNameAsync(CorporationId corporationId, CancellationToken cancellationToken)
     {
         Result<IReadOnlyList<EVE.IPH.Infrastructure.ESI.Models.EsiEntityName>> names = await _esiClient
@@ -427,20 +641,5 @@ public sealed class CharacterManagementService : ICharacterManagementService
         }
 
         return $"Corporation {corporationId.Value}";
-    }
-
-    private static CharacterTokenStatus BuildTokenStatus(CharacterId characterId, Maybe<EsiTokenRecord> token, DateTimeOffset now)
-    {
-        if (token.HasNoValue)
-        {
-            return new CharacterTokenStatus(characterId, false, true, null, "No stored token. Refresh the character to re-authenticate.", []);
-        }
-
-        bool isExpired = token.Value.ExpiresAtUtc <= now;
-        string statusText = isExpired
-            ? $"Token expired at {token.Value.ExpiresAtUtc:yyyy-MM-dd HH:mm} UTC."
-            : $"Token valid until {token.Value.ExpiresAtUtc:yyyy-MM-dd HH:mm} UTC.";
-
-        return new CharacterTokenStatus(characterId, true, isExpired, token.Value.ExpiresAtUtc, statusText, token.Value.Scopes);
     }
 }

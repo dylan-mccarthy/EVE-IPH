@@ -13,10 +13,11 @@ public sealed class CharacterManagementViewModelTests
     [Fact]
     public async Task Constructor_WhenNoCharactersStored_ShowsEmptyState()
     {
-        ICharacterManagementService service = Substitute.For<ICharacterManagementService>();
-        ConfigureLoad(service, Array.Empty<CharacterRecord>(), Array.Empty<CharacterTokenStatus>(), Array.Empty<CorporationConnectionRecord>());
+        ICharacterManagementQueryService queryService = Substitute.For<ICharacterManagementQueryService>();
+        ICharacterManagementCommandService commandService = Substitute.For<ICharacterManagementCommandService>();
+        ConfigureLoad(queryService, Array.Empty<CharacterRecord>(), Array.Empty<CharacterTokenStatus>(), Array.Empty<CorporationConnectionRecord>());
 
-        CharacterManagementViewModel viewModel = new(service);
+        CharacterManagementViewModel viewModel = new(queryService, commandService);
         await viewModel.LoadTask;
 
         viewModel.Characters.Should().BeEmpty();
@@ -27,26 +28,19 @@ public sealed class CharacterManagementViewModelTests
     [Fact]
     public async Task ConnectCharacterAsync_WhenAuthenticationSucceeds_ReloadsAndSelectsCharacter()
     {
-        ICharacterManagementService service = Substitute.For<ICharacterManagementService>();
+        ICharacterManagementQueryService queryService = Substitute.For<ICharacterManagementQueryService>();
+        ICharacterManagementCommandService commandService = Substitute.For<ICharacterManagementCommandService>();
         CharacterRecord existingCharacter = CreateCharacter(90000001, "Kara Maken", true);
         CharacterRecord newCharacter = CreateCharacter(90000002, "Sarma Velen", false);
 
-        service.GetCharactersAsync(Arg.Any<CancellationToken>())
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>())
             .Returns(
-                Task.FromResult(Result<IReadOnlyList<CharacterRecord>>.Success(new[] { existingCharacter })),
-                Task.FromResult(Result<IReadOnlyList<CharacterRecord>>.Success(new[] { existingCharacter, newCharacter })));
-        service.GetCharacterTokenStatusesAsync(Arg.Any<CancellationToken>())
-            .Returns(
-                Task.FromResult(Result<IReadOnlyList<CharacterTokenStatus>>.Success([CreateTokenStatus(existingCharacter.CharacterId)])),
-                Task.FromResult(Result<IReadOnlyList<CharacterTokenStatus>>.Success([CreateTokenStatus(existingCharacter.CharacterId), CreateTokenStatus(newCharacter.CharacterId)])));
-        service.GetCorporationsAsync(Arg.Any<CancellationToken>())
-            .Returns(
-                Task.FromResult(Result<IReadOnlyList<CorporationConnectionRecord>>.Success(Array.Empty<CorporationConnectionRecord>())),
-                Task.FromResult(Result<IReadOnlyList<CorporationConnectionRecord>>.Success(Array.Empty<CorporationConnectionRecord>())));
-        service.AuthenticateAndRefreshAsync(Arg.Any<CancellationToken>())
+                Task.FromResult(Result<CharacterManagementScreenData>.Success(CreateScreenData([existingCharacter], [CreateTokenStatus(existingCharacter.CharacterId)], Array.Empty<CorporationConnectionRecord>()))),
+                Task.FromResult(Result<CharacterManagementScreenData>.Success(CreateScreenData([existingCharacter, newCharacter], [CreateTokenStatus(existingCharacter.CharacterId), CreateTokenStatus(newCharacter.CharacterId)], Array.Empty<CorporationConnectionRecord>()))));
+        commandService.AuthenticateAndRefreshAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result<CharacterRecord>.Success(newCharacter)));
 
-        CharacterManagementViewModel viewModel = new(service);
+        CharacterManagementViewModel viewModel = new(queryService, commandService);
         await viewModel.LoadTask;
 
         await viewModel.ConnectCharacterAsync();
@@ -60,12 +54,13 @@ public sealed class CharacterManagementViewModelTests
     [Fact]
     public async Task Constructor_WhenOnlyPlaceholderStored_DisablesRefreshAndDelete()
     {
-        ICharacterManagementService service = Substitute.For<ICharacterManagementService>();
+        ICharacterManagementQueryService queryService = Substitute.For<ICharacterManagementQueryService>();
+        ICharacterManagementCommandService commandService = Substitute.For<ICharacterManagementCommandService>();
         CharacterRecord placeholder = CreateCharacter(SpecialCharacters.AllSkillsVId.Value, SpecialCharacters.AllSkillsVName, true);
 
-        ConfigureLoad(service, [placeholder], [CreateTokenStatus(placeholder.CharacterId, true, false, "Synthetic placeholder")], Array.Empty<CorporationConnectionRecord>());
+        ConfigureLoad(queryService, [placeholder], [CreateTokenStatus(placeholder.CharacterId, true, false, "Synthetic placeholder")], Array.Empty<CorporationConnectionRecord>());
 
-        CharacterManagementViewModel viewModel = new(service);
+        CharacterManagementViewModel viewModel = new(queryService, commandService);
         await viewModel.LoadTask;
 
         viewModel.SelectedCharacter.Should().NotBeNull();
@@ -78,17 +73,21 @@ public sealed class CharacterManagementViewModelTests
     [Fact]
     public async Task SetSelectedCharacterDefaultAsync_WhenSuccessful_UpdatesSelection()
     {
-        ICharacterManagementService service = Substitute.For<ICharacterManagementService>();
+        ICharacterManagementQueryService queryService = Substitute.For<ICharacterManagementQueryService>();
+        ICharacterManagementCommandService commandService = Substitute.For<ICharacterManagementCommandService>();
         CharacterRecord currentDefault = CreateCharacter(90000001, "Kara Maken", true);
         CharacterRecord alternateCharacter = CreateCharacter(90000002, "Sarma Velen", false);
         CharacterRecord updatedDefault = alternateCharacter with { IsDefault = true };
         CharacterRecord updatedNonDefault = currentDefault with { IsDefault = false };
 
-        ConfigureLoad(service, [currentDefault, alternateCharacter], [CreateTokenStatus(currentDefault.CharacterId), CreateTokenStatus(alternateCharacter.CharacterId)], Array.Empty<CorporationConnectionRecord>());
-        service.SetDefaultAsync(alternateCharacter.CharacterId, Arg.Any<CancellationToken>())
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult(Result<CharacterManagementScreenData>.Success(CreateScreenData([currentDefault, alternateCharacter], [CreateTokenStatus(currentDefault.CharacterId), CreateTokenStatus(alternateCharacter.CharacterId)], Array.Empty<CorporationConnectionRecord>()))),
+                Task.FromResult(Result<CharacterManagementScreenData>.Success(CreateScreenData([updatedNonDefault, updatedDefault], [CreateTokenStatus(updatedNonDefault.CharacterId), CreateTokenStatus(updatedDefault.CharacterId)], Array.Empty<CorporationConnectionRecord>()))));
+        commandService.SetDefaultAsync(alternateCharacter.CharacterId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result<IReadOnlyList<CharacterRecord>>.Success(new[] { updatedNonDefault, updatedDefault })));
 
-        CharacterManagementViewModel viewModel = new(service);
+        CharacterManagementViewModel viewModel = new(queryService, commandService);
         await viewModel.LoadTask;
         viewModel.SelectedCharacter = viewModel.Characters.Single(character => character.CharacterId == alternateCharacter.CharacterId);
 
@@ -103,24 +102,19 @@ public sealed class CharacterManagementViewModelTests
     [Fact]
     public async Task DeleteSelectedCharacterAsync_WhenSuccessful_RemovesCharacterAndSelectsRemainingDefault()
     {
-        ICharacterManagementService service = Substitute.For<ICharacterManagementService>();
+        ICharacterManagementQueryService queryService = Substitute.For<ICharacterManagementQueryService>();
+        ICharacterManagementCommandService commandService = Substitute.For<ICharacterManagementCommandService>();
         CharacterRecord deletedCharacter = CreateCharacter(90000001, "Kara Maken", true);
         CharacterRecord remainingCharacter = CreateCharacter(90000002, "Sarma Velen", true);
 
-        service.GetCharactersAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Result<IReadOnlyList<CharacterRecord>>.Success(new[] { deletedCharacter, CreateCharacter(90000002, "Sarma Velen", false) })));
-        service.GetCharacterTokenStatusesAsync(Arg.Any<CancellationToken>())
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>())
             .Returns(
-                Task.FromResult(Result<IReadOnlyList<CharacterTokenStatus>>.Success([CreateTokenStatus(deletedCharacter.CharacterId), CreateTokenStatus(remainingCharacter.CharacterId)])),
-                Task.FromResult(Result<IReadOnlyList<CharacterTokenStatus>>.Success([CreateTokenStatus(remainingCharacter.CharacterId)])));
-        service.GetCorporationsAsync(Arg.Any<CancellationToken>())
-            .Returns(
-                Task.FromResult(Result<IReadOnlyList<CorporationConnectionRecord>>.Success(Array.Empty<CorporationConnectionRecord>())),
-                Task.FromResult(Result<IReadOnlyList<CorporationConnectionRecord>>.Success(Array.Empty<CorporationConnectionRecord>())));
-        service.DeleteAsync(deletedCharacter.CharacterId, Arg.Any<CancellationToken>())
+                Task.FromResult(Result<CharacterManagementScreenData>.Success(CreateScreenData([deletedCharacter, CreateCharacter(90000002, "Sarma Velen", false)], [CreateTokenStatus(deletedCharacter.CharacterId), CreateTokenStatus(remainingCharacter.CharacterId)], Array.Empty<CorporationConnectionRecord>()))),
+                Task.FromResult(Result<CharacterManagementScreenData>.Success(CreateScreenData([remainingCharacter], [CreateTokenStatus(remainingCharacter.CharacterId)], Array.Empty<CorporationConnectionRecord>()))));
+        commandService.DeleteAsync(deletedCharacter.CharacterId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result<IReadOnlyList<CharacterRecord>>.Success(new[] { remainingCharacter })));
 
-        CharacterManagementViewModel viewModel = new(service);
+        CharacterManagementViewModel viewModel = new(queryService, commandService);
         await viewModel.LoadTask;
         viewModel.SelectedCharacter = viewModel.Characters.Single(character => character.CharacterId == deletedCharacter.CharacterId);
 
@@ -135,26 +129,19 @@ public sealed class CharacterManagementViewModelTests
     [Fact]
     public async Task ConnectCorporationFromSelectedCharacterAsync_WhenSuccessful_LoadsCorporationAndStatus()
     {
-        ICharacterManagementService service = Substitute.For<ICharacterManagementService>();
+        ICharacterManagementQueryService queryService = Substitute.For<ICharacterManagementQueryService>();
+        ICharacterManagementCommandService commandService = Substitute.For<ICharacterManagementCommandService>();
         CharacterRecord character = CreateCharacter(90000001, "Kara Maken", true);
         CorporationConnectionRecord corporation = new(new CorporationId(98000001), "Acme Holdings", character.CharacterId, true, true, false);
 
-        service.GetCharactersAsync(Arg.Any<CancellationToken>())
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>())
             .Returns(
-                Task.FromResult(Result<IReadOnlyList<CharacterRecord>>.Success([character])),
-                Task.FromResult(Result<IReadOnlyList<CharacterRecord>>.Success([character])));
-        service.GetCharacterTokenStatusesAsync(Arg.Any<CancellationToken>())
-            .Returns(
-                Task.FromResult(Result<IReadOnlyList<CharacterTokenStatus>>.Success([CreateTokenStatus(character.CharacterId)])),
-                Task.FromResult(Result<IReadOnlyList<CharacterTokenStatus>>.Success([CreateTokenStatus(character.CharacterId)])));
-        service.GetCorporationsAsync(Arg.Any<CancellationToken>())
-            .Returns(
-                Task.FromResult(Result<IReadOnlyList<CorporationConnectionRecord>>.Success(Array.Empty<CorporationConnectionRecord>())),
-                Task.FromResult(Result<IReadOnlyList<CorporationConnectionRecord>>.Success([corporation])));
-        service.ConnectCorporationAsync(character.CharacterId, Arg.Any<CancellationToken>())
+                Task.FromResult(Result<CharacterManagementScreenData>.Success(CreateScreenData([character], [CreateTokenStatus(character.CharacterId)], Array.Empty<CorporationConnectionRecord>()))),
+                Task.FromResult(Result<CharacterManagementScreenData>.Success(CreateScreenData([character], [CreateTokenStatus(character.CharacterId)], [corporation]))));
+        commandService.ConnectCorporationAsync(character.CharacterId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Result<CorporationConnectionRecord>.Success(corporation)));
 
-        CharacterManagementViewModel viewModel = new(service);
+        CharacterManagementViewModel viewModel = new(queryService, commandService);
         await viewModel.LoadTask;
 
         await viewModel.ConnectCorporationFromSelectedCharacterAsync();
@@ -168,13 +155,14 @@ public sealed class CharacterManagementViewModelTests
     [Fact]
     public async Task Constructor_LoadsTokenStatusTextForCharacters()
     {
-        ICharacterManagementService service = Substitute.For<ICharacterManagementService>();
+        ICharacterManagementQueryService queryService = Substitute.For<ICharacterManagementQueryService>();
+        ICharacterManagementCommandService commandService = Substitute.For<ICharacterManagementCommandService>();
         CharacterRecord character = CreateCharacter(90000001, "Kara Maken", true);
         CharacterTokenStatus tokenStatus = CreateTokenStatus(character.CharacterId, true, true, "Token expired. Reconnect this character.");
 
-        ConfigureLoad(service, [character], [tokenStatus], Array.Empty<CorporationConnectionRecord>());
+        ConfigureLoad(queryService, [character], [tokenStatus], Array.Empty<CorporationConnectionRecord>());
 
-        CharacterManagementViewModel viewModel = new(service);
+        CharacterManagementViewModel viewModel = new(queryService, commandService);
         await viewModel.LoadTask;
 
         viewModel.Characters.Should().ContainSingle();
@@ -182,17 +170,47 @@ public sealed class CharacterManagementViewModelTests
     }
 
     private static void ConfigureLoad(
-        ICharacterManagementService service,
+        ICharacterManagementQueryService queryService,
         IReadOnlyList<CharacterRecord> characters,
         IReadOnlyList<CharacterTokenStatus> tokenStatuses,
         IReadOnlyList<CorporationConnectionRecord> corporations)
     {
-        service.GetCharactersAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Result<IReadOnlyList<CharacterRecord>>.Success(characters)));
-        service.GetCharacterTokenStatusesAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Result<IReadOnlyList<CharacterTokenStatus>>.Success(tokenStatuses)));
-        service.GetCorporationsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Result<IReadOnlyList<CorporationConnectionRecord>>.Success(corporations)));
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<CharacterManagementScreenData>.Success(CreateScreenData(characters, tokenStatuses, corporations))));
+    }
+
+    private static CharacterManagementScreenData CreateScreenData(
+        IReadOnlyList<CharacterRecord> characters,
+        IReadOnlyList<CharacterTokenStatus> tokenStatuses,
+        IReadOnlyList<CorporationConnectionRecord> corporations) => new(
+            characters.Select(character => new CharacterManagementCharacterRow(
+                character,
+                tokenStatuses.Single(status => status.CharacterId == character.CharacterId)))
+                .ToArray(),
+            corporations.Select(corporation => new CharacterManagementCorporationRow(corporation, "Kara Maken"))
+                .ToArray(),
+            BuildStatusText(characters, corporations));
+
+    private static string BuildStatusText(
+        IReadOnlyList<CharacterRecord> characters,
+        IReadOnlyList<CorporationConnectionRecord> corporations)
+    {
+        if (characters.Count == 0)
+        {
+            return "No characters have been connected yet. Sign in with EVE SSO to load a character profile, skills, and standings.";
+        }
+
+        bool hasPlaceholder = characters.Any(character => SpecialCharacters.IsAllSkillsV(character.CharacterId));
+        bool hasRealCharacters = characters.Any(character => !SpecialCharacters.IsAllSkillsV(character.CharacterId));
+
+        if (hasPlaceholder && !hasRealCharacters)
+        {
+            return "Loaded the generated All Skills V placeholder. Connect an EVE character to sync live skills and standings.";
+        }
+
+        return hasPlaceholder
+            ? $"Loaded {characters.Count} stored character(s), including the generated All Skills V placeholder, and {corporations.Count} corporation connection(s)."
+            : $"Loaded {characters.Count} stored character(s) and {corporations.Count} corporation connection(s).";
     }
 
     private static CharacterTokenStatus CreateTokenStatus(CharacterId characterId, bool hasStoredToken = true, bool isExpired = false, string? statusText = null) => new(

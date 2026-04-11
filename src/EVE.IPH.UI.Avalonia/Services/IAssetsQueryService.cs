@@ -2,11 +2,9 @@ using EVE.IPH.Domain.Assets.Models;
 
 namespace EVE.IPH.UI.Avalonia.Services;
 
-public interface IAssetsScreenService
+public interface IAssetsQueryService
 {
     Task<AssetsScreenData> GetScreenDataAsync(CancellationToken cancellationToken = default);
-
-    Task<AssetsScreenData> RefreshAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed record AssetsScreenData(

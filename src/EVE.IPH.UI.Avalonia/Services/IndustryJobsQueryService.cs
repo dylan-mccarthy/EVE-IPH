@@ -4,13 +4,13 @@ using EVE.IPH.Infrastructure.Data.Repositories.App;
 
 namespace EVE.IPH.UI.Avalonia.Services;
 
-public sealed class IndustryJobsScreenService : IIndustryJobsScreenService
+public sealed class IndustryJobsQueryService : IIndustryJobsQueryService
 {
     private readonly IIndustryJobService _industryJobService;
     private readonly IIndustryJobPresentationService _industryJobPresentationService;
     private readonly IIndustryJobReadRepository _industryJobReadRepository;
 
-    public IndustryJobsScreenService(
+    public IndustryJobsQueryService(
         IIndustryJobService industryJobService,
         IIndustryJobPresentationService industryJobPresentationService,
         IIndustryJobReadRepository industryJobReadRepository)
@@ -20,8 +20,15 @@ public sealed class IndustryJobsScreenService : IIndustryJobsScreenService
         _industryJobReadRepository = industryJobReadRepository ?? throw new ArgumentNullException(nameof(industryJobReadRepository));
     }
 
-    public IndustryJobsScreenData GetScreenData(DateTimeOffset now) =>
-        BuildScreenData(MapJobs(_industryJobReadRepository.GetViewRecordsAsync().GetAwaiter().GetResult()), now);
+    public async Task<IndustryJobsScreenData> GetScreenDataAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        Result<IReadOnlyList<IndustryJobScreenRecord>> jobsResult = await _industryJobReadRepository
+            .GetViewRecordsAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        IReadOnlyList<EVE.IPH.Domain.Industry.Models.IndustryJobViewItem> jobs = MapJobs(jobsResult);
+        return BuildScreenData(jobs, now, BuildStatusText(jobsResult, jobs.Count));
+    }
 
     private static IReadOnlyList<EVE.IPH.Domain.Industry.Models.IndustryJobViewItem> MapJobs(Result<IReadOnlyList<IndustryJobScreenRecord>> result)
     {
@@ -55,7 +62,7 @@ public sealed class IndustryJobsScreenService : IIndustryJobsScreenService
             .ToArray();
     }
 
-    private IndustryJobsScreenData BuildScreenData(IReadOnlyList<EVE.IPH.Domain.Industry.Models.IndustryJobViewItem> jobs, DateTimeOffset now)
+    private IndustryJobsScreenData BuildScreenData(IReadOnlyList<EVE.IPH.Domain.Industry.Models.IndustryJobViewItem> jobs, DateTimeOffset now, string statusText)
     {
         EVE.IPH.Domain.Industry.Models.IndustryJobSummary summary = _industryJobService.SummarizeCurrentJobs(jobs.Select(job => job.Job), now);
         IReadOnlyList<EVE.IPH.Domain.Industry.Models.IndustryJobDisplayRow> rows = jobs
@@ -64,7 +71,18 @@ public sealed class IndustryJobsScreenService : IIndustryJobsScreenService
             .ThenBy(job => job.BlueprintName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return new IndustryJobsScreenData(summary, rows);
+        return new IndustryJobsScreenData(summary, rows, statusText);
     }
 
+    private static string BuildStatusText(Result<IReadOnlyList<IndustryJobScreenRecord>> jobsResult, int rowCount)
+    {
+        if (jobsResult.IsFailure)
+        {
+            return $"Unable to load synced industry jobs: {jobsResult.Error.Message}";
+        }
+
+        return rowCount == 0
+            ? "No synced industry jobs were found yet. Use Refresh Industry Jobs to pull the latest character and corporation jobs from ESI."
+            : "Loaded synced industry-job records from the local SQLite store.";
+    }
 }

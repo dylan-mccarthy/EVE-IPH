@@ -112,7 +112,7 @@ public sealed class MainWindowViewModelTests
 
         CharacterManagementViewModel characterManagement = await CreateCharacterManagementViewModelAsync();
         AssetsViewModel assets = await CreateAssetsViewModelAsync();
-        IndustryJobsViewModel industryJobs = CreateIndustryJobsViewModel();
+        IndustryJobsViewModel industryJobs = await CreateIndustryJobsViewModelAsync();
         ResearchAgentsViewModel researchAgents = await CreateResearchAgentsViewModelAsync();
 
         return new MainWindowViewModel(
@@ -132,42 +132,44 @@ public sealed class MainWindowViewModelTests
 
     private static async Task<CharacterManagementViewModel> CreateCharacterManagementViewModelAsync()
     {
-        ICharacterManagementService service = Substitute.For<ICharacterManagementService>();
-        service.GetCharactersAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(
-            Result<IReadOnlyList<CharacterRecord>>.Success([])));
-        service.GetCharacterTokenStatusesAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(
-            Result<IReadOnlyList<CharacterTokenStatus>>.Success([])));
-        service.GetCorporationsAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(
-            Result<IReadOnlyList<CorporationConnectionRecord>>.Success([])));
+        ICharacterManagementQueryService queryService = Substitute.For<ICharacterManagementQueryService>();
+        ICharacterManagementCommandService commandService = Substitute.For<ICharacterManagementCommandService>();
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(
+            Result<CharacterManagementScreenData>.Success(new CharacterManagementScreenData([], [], "No characters have been connected yet. Connect one to start syncing ESI data."))));
 
-        CharacterManagementViewModel viewModel = new(service);
+        CharacterManagementViewModel viewModel = new(queryService, commandService);
         await viewModel.LoadTask;
         return viewModel;
     }
 
     private static async Task<AssetsViewModel> CreateAssetsViewModelAsync()
     {
-        IAssetsScreenService screenService = Substitute.For<IAssetsScreenService>();
-        screenService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(
+        IAssetsQueryService queryService = Substitute.For<IAssetsQueryService>();
+        IAssetsCommandService commandService = Substitute.For<IAssetsCommandService>();
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(
             new AssetsScreenData(
                 [new HydratedAsset(1001, 5000001, 6000001, new TypeId(101), 12, 11, true, AssetBlueprintKind.None, string.Empty, "Heavy Water", "Ice Products", "Material", "Jita 4-4", "Item Hangar", false, 1)],
                 [new AssetOwnerFilterOption(null, "All Owners"), new AssetOwnerFilterOption(1001, "Kara Maken")],
                 "Loaded synced asset records from the local SQLite store.")));
-        screenService.RefreshAsync(Arg.Any<CancellationToken>()).Returns(call => screenService.GetScreenDataAsync(call.Arg<CancellationToken>()));
+        commandService.RefreshAsync(Arg.Any<CancellationToken>()).Returns(call => queryService.GetScreenDataAsync(call.Arg<CancellationToken>()));
 
-        AssetsViewModel viewModel = new(new AssetViewFilterService(), screenService);
+        AssetsViewModel viewModel = new(new AssetViewFilterService(), queryService, commandService);
         await viewModel.LoadTask;
         return viewModel;
     }
 
-    private static IndustryJobsViewModel CreateIndustryJobsViewModel()
+    private static async Task<IndustryJobsViewModel> CreateIndustryJobsViewModelAsync()
     {
-        IIndustryJobsScreenService screenService = Substitute.For<IIndustryJobsScreenService>();
-        screenService.GetScreenData(Arg.Any<DateTimeOffset>()).Returns(new IndustryJobsScreenData(
+        IIndustryJobsQueryService queryService = Substitute.For<IIndustryJobsQueryService>();
+        IIndustryJobsCommandService commandService = Substitute.For<IIndustryJobsCommandService>();
+        queryService.GetScreenDataAsync(Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(new IndustryJobsScreenData(
             new IndustryJobSummary(1, 0, 0, 0, 1, 0),
-            [new IndustryJobDisplayRow(900001, "Kara Maken", "Manufacturing", "Vargur Blueprint", "Vargur", "Ship", "Jita", "The Forge", 1, 2, 0, "Tatara Alpha", "Ship Hangar", "Personal", IndustryJobState.InProgress, "In Progress", "Runs 0/2")])) ;
+            [new IndustryJobDisplayRow(900001, "Kara Maken", "Manufacturing", "Vargur Blueprint", "Vargur", "Ship", "Jita", "The Forge", 1, 2, 0, "Tatara Alpha", "Ship Hangar", "Personal", IndustryJobState.InProgress, "In Progress", "Runs 0/2")],
+            "Loaded synced industry-job records from the local SQLite store."));
 
-        return new IndustryJobsViewModel(screenService);
+        IndustryJobsViewModel viewModel = new(queryService, commandService);
+        await viewModel.LoadTask;
+        return viewModel;
     }
 
     private static async Task<ResearchAgentsViewModel> CreateResearchAgentsViewModelAsync()

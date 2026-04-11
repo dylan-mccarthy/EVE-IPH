@@ -7,7 +7,8 @@ namespace EVE.IPH.UI.Avalonia.ViewModels;
 
 public sealed class CharacterManagementViewModel : ObservableObject
 {
-    private readonly ICharacterManagementService _characterManagementService;
+    private readonly ICharacterManagementQueryService _characterManagementQueryService;
+    private readonly ICharacterManagementCommandService _characterManagementCommandService;
     private IReadOnlyList<CharacterConnectionItem> _characters = [];
     private CharacterConnectionItem? _selectedCharacter;
     private IReadOnlyList<CorporationConnectionItem> _corporations = [];
@@ -15,9 +16,12 @@ public sealed class CharacterManagementViewModel : ObservableObject
     private string _statusText = "Loading stored characters...";
     private bool _isBusy;
 
-    public CharacterManagementViewModel(ICharacterManagementService characterManagementService)
+    public CharacterManagementViewModel(
+        ICharacterManagementQueryService characterManagementQueryService,
+        ICharacterManagementCommandService characterManagementCommandService)
     {
-        _characterManagementService = characterManagementService ?? throw new ArgumentNullException(nameof(characterManagementService));
+        _characterManagementQueryService = characterManagementQueryService ?? throw new ArgumentNullException(nameof(characterManagementQueryService));
+        _characterManagementCommandService = characterManagementCommandService ?? throw new ArgumentNullException(nameof(characterManagementCommandService));
         LoadTask = ReloadCharactersAsync();
     }
 
@@ -110,7 +114,7 @@ public sealed class CharacterManagementViewModel : ObservableObject
 
         await RunBusyActionAsync(async () =>
         {
-            var connectResult = await _characterManagementService.AuthenticateAndRefreshAsync().ConfigureAwait(false);
+            var connectResult = await _characterManagementCommandService.AuthenticateAndRefreshAsync().ConfigureAwait(false);
             if (connectResult.IsFailure)
             {
                 StatusText = $"Unable to connect character: {connectResult.Error.Message}";
@@ -132,7 +136,7 @@ public sealed class CharacterManagementViewModel : ObservableObject
 
         await RunBusyActionAsync(async () =>
         {
-            var connectResult = await _characterManagementService.ConnectCorporationAsync(selectedCharacter.Character.CharacterId).ConfigureAwait(false);
+            var connectResult = await _characterManagementCommandService.ConnectCorporationAsync(selectedCharacter.Character.CharacterId).ConfigureAwait(false);
             if (connectResult.IsFailure)
             {
                 StatusText = $"Unable to connect corporation: {connectResult.Error.Message}";
@@ -154,7 +158,7 @@ public sealed class CharacterManagementViewModel : ObservableObject
 
         await RunBusyActionAsync(async () =>
         {
-            var refreshResult = await _characterManagementService.RefreshAsync(selectedCharacter.Character.CharacterId).ConfigureAwait(false);
+            var refreshResult = await _characterManagementCommandService.RefreshAsync(selectedCharacter.Character.CharacterId).ConfigureAwait(false);
             if (refreshResult.IsFailure)
             {
                 StatusText = $"Unable to refresh character: {refreshResult.Error.Message}";
@@ -176,7 +180,7 @@ public sealed class CharacterManagementViewModel : ObservableObject
 
         await RunBusyActionAsync(async () =>
         {
-            var refreshResult = await _characterManagementService.RefreshCorporationAsync(selectedCorporation.Corporation.CorporationId).ConfigureAwait(false);
+            var refreshResult = await _characterManagementCommandService.RefreshCorporationAsync(selectedCorporation.Corporation.CorporationId).ConfigureAwait(false);
             if (refreshResult.IsFailure)
             {
                 StatusText = $"Unable to refresh corporation: {refreshResult.Error.Message}";
@@ -198,14 +202,14 @@ public sealed class CharacterManagementViewModel : ObservableObject
 
         await RunBusyActionAsync(async () =>
         {
-            var setDefaultResult = await _characterManagementService.SetDefaultAsync(selectedCharacter.Character.CharacterId).ConfigureAwait(false);
+            var setDefaultResult = await _characterManagementCommandService.SetDefaultAsync(selectedCharacter.Character.CharacterId).ConfigureAwait(false);
             if (setDefaultResult.IsFailure)
             {
                 StatusText = $"Unable to set default character: {setDefaultResult.Error.Message}";
                 return;
             }
 
-            await ReloadCharactersAsync(selectedCharacter.CharacterId.Value, SelectedCorporation?.CorporationId.Value, setDefaultResult.Value).ConfigureAwait(false);
+            await ReloadCharactersAsync(selectedCharacter.CharacterId.Value, SelectedCorporation?.CorporationId.Value).ConfigureAwait(false);
             StatusText = $"{selectedCharacter.Name} is now the default character.";
         }).ConfigureAwait(false);
     }
@@ -220,14 +224,14 @@ public sealed class CharacterManagementViewModel : ObservableObject
 
         await RunBusyActionAsync(async () =>
         {
-            var deleteResult = await _characterManagementService.DeleteAsync(selectedCharacter.Character.CharacterId).ConfigureAwait(false);
+            var deleteResult = await _characterManagementCommandService.DeleteAsync(selectedCharacter.Character.CharacterId).ConfigureAwait(false);
             if (deleteResult.IsFailure)
             {
                 StatusText = $"Unable to remove character: {deleteResult.Error.Message}";
                 return;
             }
 
-            await ReloadCharactersAsync(null, SelectedCorporation?.CorporationId.Value, deleteResult.Value).ConfigureAwait(false);
+            await ReloadCharactersAsync(null, SelectedCorporation?.CorporationId.Value).ConfigureAwait(false);
             StatusText = $"Removed {selectedCharacter.Name} from the local store.";
         }).ConfigureAwait(false);
     }
@@ -242,71 +246,47 @@ public sealed class CharacterManagementViewModel : ObservableObject
 
         await RunBusyActionAsync(async () =>
         {
-            var deleteResult = await _characterManagementService.DeleteCorporationAsync(selectedCorporation.Corporation.CorporationId).ConfigureAwait(false);
+            var deleteResult = await _characterManagementCommandService.DeleteCorporationAsync(selectedCorporation.Corporation.CorporationId).ConfigureAwait(false);
             if (deleteResult.IsFailure)
             {
                 StatusText = $"Unable to remove corporation: {deleteResult.Error.Message}";
                 return;
             }
 
-            await ReloadCharactersAsync(SelectedCharacter?.CharacterId.Value, null, preloadedCorporations: deleteResult.Value).ConfigureAwait(false);
+            await ReloadCharactersAsync(SelectedCharacter?.CharacterId.Value, null).ConfigureAwait(false);
             StatusText = $"Removed corporation {selectedCorporation.Name} from the local store.";
         }).ConfigureAwait(false);
     }
 
     private async Task ReloadCharactersAsync(
         long? selectedCharacterId = null,
-        long? selectedCorporationId = null,
-        IReadOnlyList<CharacterRecord>? preloadedCharacters = null,
-        IReadOnlyList<CorporationConnectionRecord>? preloadedCorporations = null)
+        long? selectedCorporationId = null)
     {
-        var charactersResult = preloadedCharacters is null
-            ? await _characterManagementService.GetCharactersAsync().ConfigureAwait(false)
-            : EVE.IPH.Domain.Core.Results.Result<IReadOnlyList<CharacterRecord>>.Success(preloadedCharacters);
-        var tokenStatusesResult = await _characterManagementService.GetCharacterTokenStatusesAsync().ConfigureAwait(false);
-        var corporationsResult = preloadedCorporations is null
-            ? await _characterManagementService.GetCorporationsAsync().ConfigureAwait(false)
-            : EVE.IPH.Domain.Core.Results.Result<IReadOnlyList<CorporationConnectionRecord>>.Success(preloadedCorporations);
+        var screenDataResult = await _characterManagementQueryService.GetScreenDataAsync().ConfigureAwait(false);
 
-        if (charactersResult.IsFailure)
+        if (screenDataResult.IsFailure)
         {
             Characters = [];
             SelectedCharacter = null;
             Corporations = [];
             SelectedCorporation = null;
-            StatusText = $"Unable to load stored characters: {charactersResult.Error.Message}";
+            StatusText = $"Unable to load stored characters: {screenDataResult.Error.Message}";
             return;
         }
 
-        Dictionary<long, CharacterTokenStatus> tokenStatuses = tokenStatusesResult.IsSuccess
-            ? tokenStatusesResult.Value.ToDictionary(status => status.CharacterId.Value)
-            : [];
+        CharacterManagementScreenData screenData = screenDataResult.Value;
 
-        Characters = charactersResult.Value
-            .Select(character => new CharacterConnectionItem(
-                character,
-                tokenStatuses.GetValueOrDefault(character.CharacterId.Value)
-                    ?? new CharacterTokenStatus(character.CharacterId, false, true, null, "Unable to load token status.", [])))
+        Characters = screenData.Characters
+            .Select(character => new CharacterConnectionItem(character.Character, character.TokenStatus))
             .ToArray();
         SelectedCharacter = SelectCharacter(Characters, selectedCharacterId);
 
-        if (corporationsResult.IsFailure)
-        {
-            Corporations = [];
-            SelectedCorporation = null;
-            StatusText = $"Unable to load stored corporations: {corporationsResult.Error.Message}";
-            return;
-        }
-
-        Dictionary<long, string> characterNames = Characters.ToDictionary(character => character.CharacterId.Value, character => character.Name);
-        Corporations = corporationsResult.Value
-            .Select(corporation => new CorporationConnectionItem(
-                corporation,
-                characterNames.GetValueOrDefault(corporation.AuthorizedCharacterId.Value, $"Character {corporation.AuthorizedCharacterId.Value}")))
+        Corporations = screenData.Corporations
+            .Select(corporation => new CorporationConnectionItem(corporation.Corporation, corporation.AuthorizedCharacterName))
             .ToArray();
         SelectedCorporation = SelectCorporation(Corporations, selectedCorporationId);
 
-        StatusText = BuildStatusText(Characters, Corporations, tokenStatusesResult.IsFailure ? tokenStatusesResult.Error.Message : null);
+        StatusText = screenData.StatusText;
     }
 
     private static CharacterConnectionItem? SelectCharacter(IReadOnlyList<CharacterConnectionItem> characters, long? selectedCharacterId)
@@ -359,29 +339,5 @@ public sealed class CharacterManagementViewModel : ObservableObject
         {
             IsBusy = false;
         }
-    }
-
-    private static string BuildStatusText(IReadOnlyList<CharacterConnectionItem> characters, IReadOnlyList<CorporationConnectionItem> corporations, string? tokenStatusError)
-    {
-        if (characters.Count == 0)
-        {
-            return "No characters have been connected yet. Sign in with EVE SSO to load a character profile, skills, and standings.";
-        }
-
-        bool hasPlaceholder = characters.Any(character => SpecialCharacters.IsAllSkillsV(character.CharacterId));
-        bool hasRealCharacters = characters.Any(character => !SpecialCharacters.IsAllSkillsV(character.CharacterId));
-
-        if (hasPlaceholder && !hasRealCharacters)
-        {
-            return "Loaded the generated All Skills V placeholder. Connect an EVE character to sync live skills and standings.";
-        }
-
-        string summary = hasPlaceholder
-            ? $"Loaded {characters.Count} stored character(s), including the generated All Skills V placeholder, and {corporations.Count} corporation connection(s)."
-            : $"Loaded {characters.Count} stored character(s) and {corporations.Count} corporation connection(s).";
-
-        return string.IsNullOrWhiteSpace(tokenStatusError)
-            ? summary
-            : $"{summary} Token status warning: {tokenStatusError}";
     }
 }

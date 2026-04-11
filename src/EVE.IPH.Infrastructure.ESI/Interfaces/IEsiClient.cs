@@ -19,6 +19,16 @@ public interface IEsiClient
         CharacterId authenticatedCharacterId,
         CancellationToken cancellationToken = default);
 
+    Task<Result<IReadOnlyList<EsiOwnedBlueprint>>> GetCorporationBlueprintsAsync(
+        CorporationId corporationId,
+        CharacterId authenticatedCharacterId,
+        CancellationToken cancellationToken = default);
+
+    Task<Result<IReadOnlyList<string>>> GetCorporationRolesAsync(
+        CorporationId corporationId,
+        CharacterId authenticatedCharacterId,
+        CancellationToken cancellationToken = default);
+
     Task<Result<IReadOnlyList<EsiSkill>>> GetSkillsAsync(CharacterId characterId, CancellationToken cancellationToken = default);
 
     Task<Result<IReadOnlyList<EsiStanding>>> GetStandingsAsync(CharacterId characterId, CancellationToken cancellationToken = default);

@@ -8,7 +8,8 @@ namespace EVE.IPH.UI.Avalonia.ViewModels;
 public sealed class AssetsViewModel : ObservableObject
 {
     private readonly IAssetViewFilterService _assetViewFilterService;
-    private readonly IAssetsScreenService _assetsScreenService;
+    private readonly IAssetsQueryService _assetsQueryService;
+    private readonly IAssetsCommandService _assetsCommandService;
     private IReadOnlyList<HydratedAsset> _allAssets = [];
     private IReadOnlyList<HydratedAsset> _items = [];
     private IReadOnlyList<AssetOwnerFilterOption> _ownerOptions = [new AssetOwnerFilterOption(null, "All Owners")];
@@ -22,10 +23,12 @@ public sealed class AssetsViewModel : ObservableObject
 
     public AssetsViewModel(
         IAssetViewFilterService assetViewFilterService,
-        IAssetsScreenService assetsScreenService)
+        IAssetsQueryService assetsQueryService,
+        IAssetsCommandService assetsCommandService)
     {
         _assetViewFilterService = assetViewFilterService ?? throw new ArgumentNullException(nameof(assetViewFilterService));
-        _assetsScreenService = assetsScreenService ?? throw new ArgumentNullException(nameof(assetsScreenService));
+        _assetsQueryService = assetsQueryService ?? throw new ArgumentNullException(nameof(assetsQueryService));
+        _assetsCommandService = assetsCommandService ?? throw new ArgumentNullException(nameof(assetsCommandService));
 
         SortModes = Enum.GetValues<AssetSortMode>();
         LoadTask = LoadAsync();
@@ -125,7 +128,7 @@ public sealed class AssetsViewModel : ObservableObject
         try
         {
             IsRefreshing = true;
-            AssetsScreenData screenData = await _assetsScreenService.RefreshAsync().ConfigureAwait(false);
+            AssetsScreenData screenData = await _assetsCommandService.RefreshAsync().ConfigureAwait(false);
             ApplyScreenData(screenData);
         }
         catch (Exception ex)
@@ -143,7 +146,7 @@ public sealed class AssetsViewModel : ObservableObject
         try
         {
             IsRefreshing = true;
-            AssetsScreenData screenData = await _assetsScreenService.GetScreenDataAsync().ConfigureAwait(false);
+            AssetsScreenData screenData = await _assetsQueryService.GetScreenDataAsync().ConfigureAwait(false);
             ApplyScreenData(screenData);
         }
         catch (Exception ex)

@@ -9,8 +9,11 @@ namespace EVE.IPH.Domain.Core.Interfaces;
 public interface IOwnedBlueprintRepository
 {
     Task<Result<IReadOnlyList<OwnedBlueprintRecord>>> GetByUserAsync(long userId, CancellationToken cancellationToken = default);
+    Task<Result<IReadOnlyList<OwnedBlueprintRecord>>> GetByUsersAsync(IReadOnlyList<long> userIds, CancellationToken cancellationToken = default);
+    Task<Result<IReadOnlyList<OwnedBlueprintRecord>>> ReplaceAsync(long userId, IReadOnlyList<OwnedBlueprintRecord> blueprints, CancellationToken cancellationToken = default);
     Task<Result<OwnedBlueprintRecord>> UpsertAsync(OwnedBlueprintRecord record, CancellationToken cancellationToken = default);
     Task<Result<bool>> DeleteAsync(long userId, BlueprintId blueprintId, CancellationToken cancellationToken = default);
+    Task<Result<bool>> DeleteByUserAsync(long userId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>A user-owned blueprint entry in the application database.</summary>
