@@ -1,5 +1,6 @@
 using EVE.IPH.Domain.Core.Identifiers;
 using EVE.IPH.Domain.Core.Results;
+using EVE.IPH.Infrastructure.ESI.Models;
 
 namespace EVE.IPH.Infrastructure.ESI.Interfaces;
 
@@ -13,4 +14,10 @@ public interface IEsiClient
     Task<Result<IReadOnlyList<EsiSkill>>> GetSkillsAsync(CharacterId characterId, CancellationToken cancellationToken = default);
 
     Task<Result<IReadOnlyList<EsiStanding>>> GetStandingsAsync(CharacterId characterId, CancellationToken cancellationToken = default);
+
+    Task<Result<IReadOnlyList<EsiResearchAgent>>> GetResearchAgentsAsync(CharacterId characterId, CancellationToken cancellationToken = default);
+
+    Task<Result<IReadOnlyList<EsiEntityName>>> GetNamesAsync(
+        IReadOnlyList<long> ids,
+        CancellationToken cancellationToken = default);
 }

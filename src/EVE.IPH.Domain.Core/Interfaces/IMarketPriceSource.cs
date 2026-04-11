@@ -10,6 +10,8 @@ namespace EVE.IPH.Domain.Core.Interfaces;
 /// </summary>
 public interface IMarketPriceSource
 {
+    MarketPriceSourceKind SourceKind { get; }
+
     /// <summary>
     /// Fetches the latest sell and buy prices for the given item types in the specified region.
     /// </summary>

@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using EVE.IPH.Domain.Core.Identifiers;
 using EVE.IPH.Domain.Core.Results;
+using EVE.IPH.Infrastructure.ESI.Models;
 using EVE.IPH.Infrastructure.ESI.Interfaces;
 
 namespace EVE.IPH.Infrastructure.ESI;
@@ -55,6 +56,75 @@ public sealed class EsiClient(HttpClient httpClient) : IEsiClient
             dto => Result<IReadOnlyList<EsiStanding>>.Success(
                 dto.Select(standing => new EsiStanding(standing.FromId, standing.FromType, standing.Standing)).ToList()),
             cancellationToken);
+
+    public Task<Result<IReadOnlyList<EsiResearchAgent>>> GetResearchAgentsAsync(
+        CharacterId characterId,
+        CancellationToken cancellationToken = default) =>
+        GetAsync<IReadOnlyList<ResearchAgentDto>, IReadOnlyList<EsiResearchAgent>>(
+            $"characters/{characterId.Value}/agents_research/?datasource=tranquility",
+            dto => Result<IReadOnlyList<EsiResearchAgent>>.Success(
+                dto.Select(agent => new EsiResearchAgent(
+                    agent.AgentId,
+                    new TypeId(agent.SkillTypeId),
+                    agent.StartedAt,
+                    agent.PointsPerDay,
+                    agent.RemainderPoints)).ToList()),
+            cancellationToken);
+
+    public async Task<Result<IReadOnlyList<EsiEntityName>>> GetNamesAsync(
+        IReadOnlyList<long> ids,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+
+        if (ids.Count == 0)
+        {
+            return Result<IReadOnlyList<EsiEntityName>>.Success([]);
+        }
+
+        try
+        {
+            using HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
+                "universe/names/?datasource=tranquility",
+                ids,
+                SerializerOptions,
+                cancellationToken).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                string message = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                return Result<IReadOnlyList<EsiEntityName>>.Failure(
+                    $"ESI_{(int)response.StatusCode}",
+                    string.IsNullOrWhiteSpace(message)
+                        ? $"ESI request failed with status code {(int)response.StatusCode}."
+                        : message);
+            }
+
+            IReadOnlyList<EntityNameDto>? dto = await response.Content.ReadFromJsonAsync<IReadOnlyList<EntityNameDto>>(
+                SerializerOptions,
+                cancellationToken).ConfigureAwait(false);
+
+            if (dto is null)
+            {
+                return Result<IReadOnlyList<EsiEntityName>>.Failure("ESI_EMPTY_RESPONSE", "ESI returned an empty response body.");
+            }
+
+            return Result<IReadOnlyList<EsiEntityName>>.Success(
+                dto.Select(entry => new EsiEntityName(entry.Id, entry.Category, entry.Name)).ToList());
+        }
+        catch (HttpRequestException ex)
+        {
+            return Result<IReadOnlyList<EsiEntityName>>.Failure("ESI_HTTP_ERROR", ex.Message);
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            return Result<IReadOnlyList<EsiEntityName>>.Failure("ESI_TIMEOUT", ex.Message);
+        }
+        catch (JsonException ex)
+        {
+            return Result<IReadOnlyList<EsiEntityName>>.Failure("ESI_INVALID_JSON", ex.Message);
+        }
+    }
 
     private async Task<Result<TModel>> GetAsync<TDto, TModel>(
         string relativeUri,
@@ -114,4 +184,16 @@ public sealed class EsiClient(HttpClient httpClient) : IEsiClient
         [property: JsonPropertyName("from_id")] long FromId,
         [property: JsonPropertyName("from_type")] string FromType,
         [property: JsonPropertyName("standing")] double Standing);
+
+    private sealed record ResearchAgentDto(
+        [property: JsonPropertyName("agent_id")] long AgentId,
+        [property: JsonPropertyName("skill_type_id")] long SkillTypeId,
+        [property: JsonPropertyName("started_at")] DateTimeOffset StartedAt,
+        [property: JsonPropertyName("points_per_day")] double PointsPerDay,
+        [property: JsonPropertyName("remainder_points")] double RemainderPoints);
+
+    private sealed record EntityNameDto(
+        [property: JsonPropertyName("id")] long Id,
+        [property: JsonPropertyName("category")] string Category,
+        [property: JsonPropertyName("name")] string Name);
 }
