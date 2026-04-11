@@ -1,0 +1,58 @@
+namespace EVE.IPH.Infrastructure.Settings.Models;
+
+public sealed record ApplicationSettingsModel
+{
+    public bool CheckForUpdatesOnStart { get; init; } = true;
+    public string DataExportFormat { get; init; } = "Default";
+    public bool AllowSkillOverride { get; init; } = false;
+    public bool ShowToolTips { get; init; } = true;
+    public double RefiningImplantValue { get; init; } = 0.0;
+    public double ManufacturingImplantValue { get; init; } = 0.0;
+    public double CopyImplantValue { get; init; } = 0.0;
+    public bool LoadAssetsOnStartup { get; init; } = true;
+    public bool LoadBpsOnStartup { get; init; } = true;
+    public bool LoadEsiMarketDataOnStartup { get; init; } = true;
+    public bool LoadEsiSystemCostIndicesOnStartup { get; init; } = true;
+    public bool LoadEsiPublicStructuresOnStartup { get; init; } = true;
+    public bool SuppressEsiStatusMessages { get; init; } = false;
+    public bool DisableSound { get; init; } = false;
+    public bool IncludeInGameLinksInCopyText { get; init; } = false;
+    public bool SaveFacilitiesByChar { get; init; } = true;
+    public bool LoadBpsByChar { get; init; } = true;
+    public double BrokerCorpStanding { get; init; } = 5.0;
+    public double BrokerFactionStanding { get; init; } = 5.0;
+    public double BaseSalesTaxRate { get; init; } = 4.5;
+    public double BaseBrokerFeeRate { get; init; } = 3.0;
+    public double SccBrokerFeeSurcharge { get; init; } = 0.005;
+    public double SccIndustryFeeSurcharge { get; init; } = 0.04;
+    public double AlphaAccountTaxRate { get; init; } = 0.0025;
+    public double StructureTaxRate { get; init; } = 0.0;
+    public double StationTaxRate { get; init; } = 0.0025;
+    public int DefaultBpMe { get; init; } = 0;
+    public int DefaultBpTe { get; init; } = 0;
+    public bool CheckBuildBuy { get; init; } = false;
+    public bool SuggestBuildBpNotOwned { get; init; } = true;
+    public bool BuildWhenNotEnoughItemsOnMarket { get; init; } = false;
+    public bool ManualPriceOverride { get; init; } = false;
+    public bool SaveBpRelicsDecryptors { get; init; } = false;
+    public bool AlwaysBuyFuelBlocks { get; init; } = false;
+    public bool AlwaysBuyRams { get; init; } = false;
+    public bool SaveBpcCostPerBp { get; init; } = true;
+    public bool DisableSvr { get; init; } = false;
+    public bool DisableGaTracking { get; init; } = false;
+    public bool ShareSavedFacilities { get; init; } = true;
+    public bool RefineDrillDown { get; init; } = false;
+    public bool AlphaAccount { get; init; } = false;
+    public bool UseActiveSkillLevels { get; init; } = false;
+    public bool LoadMaxAlphaSkills { get; init; } = false;
+    public bool ShopListIncludeInventMats { get; init; } = true;
+    public bool ShopListIncludeCopyMats { get; init; } = true;
+    public int UpdatePricesRefreshInterval { get; init; } = 10;
+    public double IgnoreSvrThresholdValue { get; init; } = 0.0;
+    public string SvrAveragePriceRegion { get; init; } = "The Forge";
+    public string SvrAveragePriceDuration { get; init; } = "7";
+    public bool AutoUpdateSvrOnBpTab { get; init; } = true;
+    public string ProxyAddress { get; init; } = "";
+    public int ProxyPort { get; init; } = 0;
+    public string MarketHistoryRegion { get; init; } = "";
+}

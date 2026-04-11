@@ -19,5 +19,7 @@
     <Project Path="tests/EVE.IPH.Domain.Market.Tests/EVE.IPH.Domain.Market.Tests.csproj" />
     <Project Path="tests/EVE.IPH.Domain.Reprocessing.Tests/EVE.IPH.Domain.Reprocessing.Tests.csproj" />
     <Project Path="tests/EVE.IPH.Domain.ShoppingList.Tests/EVE.IPH.Domain.ShoppingList.Tests.csproj" />
+    <Project Path="tests/EVE.IPH.Infrastructure.Data.Integration.Tests/EVE.IPH.Infrastructure.Data.Integration.Tests.csproj" />
+    <Project Path="tests/EVE.IPH.Infrastructure.Settings.Tests/EVE.IPH.Infrastructure.Settings.Tests.csproj" />
   </Folder>
 </Solution>

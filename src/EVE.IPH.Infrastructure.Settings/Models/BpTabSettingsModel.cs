@@ -1,0 +1,51 @@
+namespace EVE.IPH.Infrastructure.Settings.Models;
+
+public sealed record BpTabSettingsModel
+{
+    public string BlueprintTypeSelection { get; init; } = "All Blueprints";
+    public bool Tech1Check { get; init; } = true;
+    public bool Tech2Check { get; init; } = true;
+    public bool Tech3Check { get; init; } = true;
+    public bool TechStorylineCheck { get; init; } = true;
+    public bool TechFactionCheck { get; init; } = true;
+    public bool TechPirateCheck { get; init; } = true;
+    public bool IncludeIgnoredBps { get; init; } = false;
+    public int IncludeFees { get; init; } = 0;
+    public double BrokerFeeRate { get; init; } = 0.05;
+    public bool IncludeUsage { get; init; } = true;
+    public bool IncludeTaxes { get; init; } = true;
+    public bool IncludeInventionCost { get; init; } = true;
+    public bool IncludeInventionTime { get; init; } = false;
+    public bool IncludeCopyCost { get; init; } = true;
+    public bool IncludeCopyTime { get; init; } = false;
+    public bool IncludeT3Cost { get; init; } = false;
+    public bool IncludeT3Time { get; init; } = false;
+    public bool IncludeBpcCost { get; init; } = false;
+    public int OptimalT2Decryptor { get; init; } = 0;
+    public int OptimalT3Decryptor { get; init; } = 0;
+    public bool PricePerUnit { get; init; } = false;
+    public bool SimpleCopyCheck { get; init; } = false;
+    public bool NpcBpos { get; init; } = false;
+    public bool LpBpos { get; init; } = false;
+    public int ProductionLines { get; init; } = 1;
+    public int LaboratoryLines { get; init; } = 1;
+    public int T3Lines { get; init; } = 1;
+    public string T2DecryptorType { get; init; } = "";
+    public string RelicType { get; init; } = "";
+    public string T3DecryptorType { get; init; } = "";
+    public bool IgnoreInvention { get; init; } = false;
+    public bool IgnoreMinerals { get; init; } = false;
+    public bool IgnoreT1Item { get; init; } = false;
+    public string ExportToShoppingListType { get; init; } = "Components";
+    public int RawColumnSort { get; init; } = 1;
+    public string RawColumnSortType { get; init; } = "Descending";
+    public int CompColumnSort { get; init; } = 1;
+    public string CompColumnSortType { get; init; } = "Descending";
+    public string RawProfitType { get; init; } = "Profit";
+    public string CompProfitType { get; init; } = "Profit";
+    public bool CompressedOre { get; init; } = false;
+    public bool SellExcessBuildItems { get; init; } = false;
+    public string HistoryRegion { get; init; } = "";
+    public string HistoryAvgDays { get; init; } = "7";
+    public int BuildT2T3Materials { get; init; } = 1;
+}

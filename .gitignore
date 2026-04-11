@@ -1,5 +1,7 @@
-bin/*
-obj/*
+bin/
+**/bin/
+obj/
+**/obj/
 Service References/*
 *.suo
 *.user
