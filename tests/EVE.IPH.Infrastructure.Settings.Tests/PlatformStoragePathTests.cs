@@ -35,4 +35,44 @@ public sealed class PlatformStoragePathTests
 
         Path.IsPathRooted(path).Should().BeTrue();
     }
+
+    [Fact]
+    public void GetDataDirectory_ReturnsNonEmptyPath()
+    {
+        string path = PlatformStoragePath.GetDataDirectory();
+
+        path.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void GetDataDirectory_ContainsAppFolderName()
+    {
+        string path = PlatformStoragePath.GetDataDirectory();
+
+        path.Should().Contain("EVE-IPH");
+    }
+
+    [Fact]
+    public void GetDataDirectory_IsAbsolutePath()
+    {
+        string path = PlatformStoragePath.GetDataDirectory();
+
+        Path.IsPathRooted(path).Should().BeTrue();
+    }
+
+    [Fact]
+    public void GetDataDirectory_IsParentOfSettingsDirectory_OnWindowsAndMacOs()
+    {
+        // On Linux the XDG spec separates data ($XDG_DATA_HOME) from config
+        // ($XDG_CONFIG_HOME), so the settings directory is not necessarily inside the
+        // data directory. This assertion only applies to Windows and macOS where both
+        // paths share the same application-support root.
+        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS())
+            return;
+
+        string dataDir = PlatformStoragePath.GetDataDirectory();
+        string settingsDir = PlatformStoragePath.GetSettingsDirectory();
+
+        settingsDir.Should().StartWith(dataDir);
+    }
 }

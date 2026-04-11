@@ -1,0 +1,229 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.0.0)'
+        required: true
+        default: '0.1.0'
+
+permissions:
+  contents: write   # needed to upload release assets
+
+env:
+  PROJECT: src/EVE.IPH.UI.Avalonia/EVE.IPH.UI.Avalonia.csproj
+  APP_ID: EVE-IPH
+  APP_FRIENDLY_NAME: "EVE Isk per Hour"
+
+jobs:
+  # ──────────────────────────────────────────────────────────
+  # Resolve the version string from the tag or workflow input
+  # ──────────────────────────────────────────────────────────
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Resolve version
+        id: resolve
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            # Strip leading 'v' from the tag name (v1.2.3 → 1.2.3)
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  # ──────────────────────────────────────────────────────────
+  # Windows — publish + Velopack package
+  # ──────────────────────────────────────────────────────────
+  build-windows:
+    needs: version
+    runs-on: windows-latest
+    env:
+      RELEASE_VERSION: ${{ needs.version.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install Velopack CLI (vpk)
+        run: dotnet tool install --global vpk
+
+      - name: Restore
+        run: dotnet restore ${{ env.PROJECT }}
+
+      - name: Publish (win-x64)
+        run: |
+          dotnet publish ${{ env.PROJECT }} `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            --output publish/win-x64 `
+            /p:Version=${{ env.RELEASE_VERSION }} `
+            /p:PublishSingleFile=false
+
+      - name: Package with Velopack (win-x64)
+        run: |
+          vpk pack `
+            --packId "${{ env.APP_ID }}" `
+            --packVersion "${{ env.RELEASE_VERSION }}" `
+            --packDir publish/win-x64 `
+            --mainExe EVE.IPH.UI.Avalonia.exe `
+            --outputDir releases/win-x64
+
+      - name: Upload Windows packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-win-x64
+          path: releases/win-x64/**
+
+  # ──────────────────────────────────────────────────────────
+  # macOS — publish + Velopack .app bundle
+  # ──────────────────────────────────────────────────────────
+  build-macos:
+    needs: version
+    runs-on: macos-latest
+    env:
+      RELEASE_VERSION: ${{ needs.version.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install Velopack CLI (vpk)
+        run: dotnet tool install --global vpk
+
+      - name: Restore
+        run: dotnet restore ${{ env.PROJECT }}
+
+      - name: Publish (osx-x64)
+        run: |
+          dotnet publish ${{ env.PROJECT }} \
+            --configuration Release \
+            --runtime osx-x64 \
+            --self-contained true \
+            --output publish/osx-x64 \
+            /p:Version=${{ env.RELEASE_VERSION }}
+
+      - name: Publish (osx-arm64)
+        run: |
+          dotnet publish ${{ env.PROJECT }} \
+            --configuration Release \
+            --runtime osx-arm64 \
+            --self-contained true \
+            --output publish/osx-arm64 \
+            /p:Version=${{ env.RELEASE_VERSION }}
+
+      # ── Code-sign the binaries ─────────────────────────────────────────────
+      # Requires the following repository secrets:
+      #   APPLE_CERTIFICATE_P12       — base64-encoded Developer ID Application cert
+      #   APPLE_CERTIFICATE_PASSWORD  — password for the .p12 archive
+      #   APPLE_TEAM_ID               — 10-character Apple Developer team ID
+      # Remove the `if: false` condition once the secrets are configured.
+      - name: Import Developer ID certificate
+        if: false   # TODO: enable when APPLE_CERTIFICATE_P12 secret is configured
+        env:
+          CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$CERTIFICATE_P12" | base64 --decode > /tmp/certificate.p12
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import /tmp/certificate.p12 \
+            -k build.keychain \
+            -P "$CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+
+      # ── Package with Velopack ──────────────────────────────────────────────
+      - name: Package with Velopack (osx-x64)
+        run: |
+          vpk pack \
+            --packId "${{ env.APP_ID }}" \
+            --packVersion "${{ env.RELEASE_VERSION }}" \
+            --packDir publish/osx-x64 \
+            --mainExe EVE.IPH.UI.Avalonia \
+            --outputDir releases/osx-x64
+
+      - name: Package with Velopack (osx-arm64)
+        run: |
+          vpk pack \
+            --packId "${{ env.APP_ID }}" \
+            --packVersion "${{ env.RELEASE_VERSION }}" \
+            --packDir publish/osx-arm64 \
+            --mainExe EVE.IPH.UI.Avalonia \
+            --outputDir releases/osx-arm64
+
+      # ── Notarize the packages ──────────────────────────────────────────────
+      # Requires the following additional secrets:
+      #   APPLE_NOTARY_USER   — Apple ID used for notarization
+      #   APPLE_NOTARY_PASS   — app-specific password for the Apple ID
+      # Remove the `if: false` condition once the secrets are configured.
+      - name: Notarize packages
+        if: false   # TODO: enable when Apple notarization secrets are configured
+        env:
+          APPLE_ID: ${{ secrets.APPLE_NOTARY_USER }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_NOTARY_PASS }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for arch in osx-x64 osx-arm64; do
+            for pkg in releases/$arch/*.pkg; do
+              xcrun notarytool submit "$pkg" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID" \
+                --wait
+            done
+          done
+
+      - name: Upload macOS packages (x64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-osx-x64
+          path: releases/osx-x64/**
+
+      - name: Upload macOS packages (arm64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-osx-arm64
+          path: releases/osx-arm64/**
+
+  # ──────────────────────────────────────────────────────────
+  # Attach all packages to the GitHub Release
+  # ──────────────────────────────────────────────────────────
+  publish-release:
+    needs: [version, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download all release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-packages
+
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "EVE Isk per Hour ${{ needs.version.outputs.version }}"
+          draft: true
+          prerelease: false
+          files: all-packages/**/*

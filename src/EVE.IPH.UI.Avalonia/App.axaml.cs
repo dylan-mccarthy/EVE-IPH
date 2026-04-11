@@ -40,7 +40,10 @@ public partial class App : Application
     private static ServiceProvider ConfigureServices()
     {
         ServiceCollection services = new();
-        string? databasePath = AppDatabasePath.TryGetExistingDatabasePath();
+
+        // The StartupOrchestrator in Program.cs ensures the database exists and all
+        // migrations have run before this method is called.
+        string databasePath = AppDatabasePath.GetCanonicalDatabasePath();
 
         services.AddSingleton<IAssetSnapshotHydrator, AssetSnapshotHydrator>();
         services.AddSingleton<IAssetViewFilterService, AssetViewFilterService>();
@@ -48,17 +51,14 @@ public partial class App : Application
         services.AddSingleton<IIndustryJobPresentationService, IndustryJobPresentationService>();
         services.AddSingleton<IResearchAgentDatacoreService, ResearchAgentDatacoreService>();
 
-        if (!string.IsNullOrWhiteSpace(databasePath))
-        {
-            services.AddSingleton<IDbConnectionFactory>(_ => new SqliteConnectionFactory($"Data Source={databasePath}"));
-            services.AddSingleton<ICharacterRepository, SqliteCharacterRepository>();
-            services.AddSingleton<ICharacterResearchAgentRepository, SqliteCharacterResearchAgentRepository>();
-            services.AddSingleton<IResearchAgentDefinitionRepository, SqliteResearchAgentDefinitionRepository>();
-            services.AddSingleton<IItemRepository, SqliteItemRepository>();
-            services.AddSingleton<ICharacterResearchAgentDataSource, NullCharacterResearchAgentDataSource>();
-            services.AddSingleton(TimeProvider.System);
-            services.AddSingleton<IResearchAgentService, ResearchAgentService>();
-        }
+        services.AddSingleton<IDbConnectionFactory>(_ => new SqliteConnectionFactory($"Data Source={databasePath}"));
+        services.AddSingleton<ICharacterRepository, SqliteCharacterRepository>();
+        services.AddSingleton<ICharacterResearchAgentRepository, SqliteCharacterResearchAgentRepository>();
+        services.AddSingleton<IResearchAgentDefinitionRepository, SqliteResearchAgentDefinitionRepository>();
+        services.AddSingleton<IItemRepository, SqliteItemRepository>();
+        services.AddSingleton<ICharacterResearchAgentDataSource, NullCharacterResearchAgentDataSource>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IResearchAgentService, ResearchAgentService>();
 
         services.AddSingleton<IPhase11SampleDataProvider, Phase11SampleDataProvider>();
         services.AddSingleton<IAssetsScreenService, AssetsScreenService>();
