@@ -13,26 +13,27 @@ The repository has moved beyond the initial scaffold. The modern solution exists
 - **Phase 4 — Infrastructure.ESI:** typed ESI HTTP client, retry/error-limit handling, PKCE authorization request generation, token exchange/refresh, interactive localhost callback flow, file-based token persistence, and typed character/market-facing adapters are implemented.
 - **Phase 5 — Domain.Characters:** skill lookup, standings, character-derived market tax services, repository-backed character orchestration, SQLite-backed skills/standings/research-agent persistence, and ESI-backed character plus research-agent data sources are now implemented.
 - **Phase 6 — Domain.Market:** provider-backed market price lookup is now implemented with cache-aware orchestration, settings-driven provider selection, and concrete Tranquility, EVEMarketer, and Fuzzworks sources.
+- **Phase 9 — Domain.ShoppingList:** material aggregation, legacy-compatible duplicate merging, repository-backed load/save orchestration, build-vs-buy projections, invention/copy/final-item list views, and on-hand subtraction are now implemented for the current milestone.
 
 **Verified state:**
 
 - `dotnet test .\\EVE-IPH-Modern.slnx --configuration Release` passes.
-- The current test suite contains **183 passing tests**, including focused `Domain.Characters`, `Infrastructure.ESI`, `Infrastructure.Data`, `Infrastructure.Settings`, and `Domain.Market` coverage.
+- The current test suite contains **204 passing tests**, including focused `Domain.Manufacturing`, `Domain.Reprocessing`, `Domain.ShoppingList`, `Domain.Characters`, `Infrastructure.ESI`, `Infrastructure.Data`, `Infrastructure.Settings`, and `Domain.Market` coverage.
 
 **Started but not yet complete:**
 
-- **Phase 7 onward:** manufacturing, reprocessing, shopping list, assets, industry, and Avalonia UI extraction are still ahead.
+- **Phase 7 — Domain.Manufacturing:** the first deterministic manufacturing calculator slice is implemented, but broader blueprint profitability, invention, and build-vs-buy orchestration are still ahead.
+- **Phase 8 — Domain.Reprocessing:** the first deterministic reprocessing yield/output calculator slice is implemented, but ore-conversion and belt-flip workflows are still ahead.
 
 **Not yet implemented in a meaningful way:**
 
 - `EVE.IPH.Domain.Manufacturing`
 - `EVE.IPH.Domain.Reprocessing`
-- `EVE.IPH.Domain.ShoppingList`
 - `EVE.IPH.Domain.Assets`
 - `EVE.IPH.Domain.Industry`
 - `EVE.IPH.UI.Avalonia`
 
-These later projects currently exist as project shells only, and several matching test projects also exist without real test coverage yet. `EVE.IPH.Domain.Market` is now ahead of those shells as a completed provider-backed service layer.
+`EVE.IPH.Domain.Assets`, `EVE.IPH.Domain.Industry`, and `EVE.IPH.UI.Avalonia` still exist mainly as project shells. `EVE.IPH.Domain.Manufacturing`, `EVE.IPH.Domain.Reprocessing`, and `EVE.IPH.Domain.ShoppingList` now have focused executable coverage and no longer belong in the shell-only category.
 
 ---
 
@@ -184,10 +185,28 @@ This phase establishes the shared price lookup layer needed by manufacturing, re
 
 **Objective:** extract material aggregation, deduplication, and build-vs-buy rollups into a reusable service layer.
 
+**Current progress:** this phase is now complete for the current modernization milestone. The modern shopping-list slice includes legacy-compatible aggregation identity, repository-backed loading/saving for the reduced persisted list, build-vs-buy projections, invention/copy/final-item list views, and on-hand subtraction with focused tests.
+
 **Planned first models/services:**
 
 - `ShoppingListItem`, `MaterialList`, `AggregatedShoppingList`
 - `IShoppingListService`
+
+**Implemented behaviour:**
+
+- Aggregate and deduplicate line items using the legacy `MaterialName + GroupName + ItemME` identity, now extended with explicit item category to keep buy/build/invention/copy/final rows distinct
+- Load and save the reduced persisted shopping-list view through `IShoppingListRepository`
+- Split a shopping list into buy, build, invention, copy, and final-item projections
+- Apply on-hand material and on-hand component subtraction to the buy/build projections
+- Fail fast when an in-memory aggregate cannot be losslessly persisted through the current `TYPE_ID`-keyed schema
+
+**Tests:**
+
+- Aggregation and duplicate-merge coverage
+- Partial and full removal coverage
+- Repository-backed load/save orchestration coverage
+- Build/buy/invention/copy/final-item projection coverage
+- On-hand subtraction coverage
 
 **Primary legacy files:** `ShoppingList.vb`, `Material.vb`, `Materials.vb`, `BuildBuyItems.vb`, `frmShoppingList.vb`.
 
@@ -249,8 +268,8 @@ This phase establishes the shared price lookup layer needed by manufacturing, re
 
 1. **Phase 7 next** — extract manufacturing calculations on top of the completed character and market services.
 2. **Phase 8 after that** — reuse the market abstractions for reprocessing and mining logic rather than adding any new price-retrieval code.
-3. **Phase 9 next** — wire shopping-list aggregation onto the Phase 7/8 calculation services and the already-built shopping-list repository.
-4. **Phase 10 before UI expansion** — pull assets and industry jobs into testable services so the Avalonia host consumes modern APIs instead of legacy code.
+3. **Phase 10 next** — pull assets and industry jobs into testable services so the Avalonia host consumes modern APIs instead of legacy code.
+4. **Phase 11 after that** — start the Avalonia host only once the remaining domain-heavy workflows have modern service seams.
 5. Add CI once the next domain slice is underway so future work is gated by automated builds and tests.
 
 ---
@@ -274,7 +293,6 @@ This phase establishes the shared price lookup layer needed by manufacturing, re
 
 - Avalonia UI work (Phase 11)
 - Reprocessing calculations (Phase 8)
-- Shopping list logic (Phase 9)
 - Assets and industry jobs extraction (Phase 10)
 - Legacy project retirement work (Phase 12)
 - Loyalty Points domain extraction, which remains an additional legacy area to schedule after the current core domains

@@ -76,6 +76,73 @@ public sealed class EsiClientTests
         result.Error.Message.Should().Contain("upstream failure");
     }
 
+        [Fact]
+        public async Task GetResearchAgentsAsync_MapsResearchAgentList()
+        {
+                const string payload = """
+                        [
+                            {
+                                "agent_id": 3019499,
+                                "skill_type_id": 11452,
+                                "started_at": "2026-04-01T12:00:00Z",
+                                "points_per_day": 54.5,
+                                "remainder_points": 12.25
+                            }
+                        ]
+                        """;
+
+                EsiClient client = CreateClient(payload);
+
+                var result = await client.GetResearchAgentsAsync(new CharacterId(12345));
+
+                result.IsSuccess.Should().BeTrue();
+                result.Value.Should().ContainSingle();
+                result.Value[0].AgentId.Should().Be(3019499);
+                result.Value[0].SkillTypeId.Value.Should().Be(11452);
+                result.Value[0].PointsPerDay.Should().Be(54.5);
+                result.Value[0].RemainderPoints.Should().Be(12.25);
+        }
+
+    [Fact]
+    public async Task GetNamesAsync_PostsIdsAndMapsPayload()
+    {
+        RecordingHandler handler = new(request =>
+        {
+            request.Method.Should().Be(HttpMethod.Post);
+            request.RequestUri!.PathAndQuery.Should().Be("/latest/universe/names/?datasource=tranquility");
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """
+                    [
+                      {
+                        "id": 500001,
+                        "category": "faction",
+                        "name": "Amarr Empire"
+                      }
+                    ]
+                    """,
+                    Encoding.UTF8,
+                    "application/json")
+            };
+        });
+
+        HttpClient httpClient = new(handler)
+        {
+            BaseAddress = new Uri("https://esi.evetech.net/latest/")
+        };
+
+        EsiClient client = new(httpClient);
+
+        var result = await client.GetNamesAsync([500001]);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle();
+        result.Value[0].Id.Should().Be(500001);
+        result.Value[0].Name.Should().Be("Amarr Empire");
+    }
+
     private static EsiClient CreateClient(string payload)
     {
         HttpClient httpClient = new(new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)

@@ -42,6 +42,54 @@ public sealed class InMemoryDbFixture : IDisposable
             """);
 
         _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS CHARACTER_SKILLS (
+                CHARACTER_ID         INTEGER NOT NULL,
+                SKILL_TYPE_ID        INTEGER NOT NULL,
+                SKILL_NAME           TEXT    NOT NULL,
+                SKILL_POINTS         INTEGER NOT NULL DEFAULT 0,
+                TRAINED_SKILL_LEVEL  INTEGER NOT NULL DEFAULT 0,
+                ACTIVE_SKILL_LEVEL   INTEGER NOT NULL DEFAULT 0,
+                OVERRIDE_SKILL       INTEGER NOT NULL DEFAULT 0,
+                OVERRIDE_LEVEL       INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (CHARACTER_ID, SKILL_TYPE_ID)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS CHARACTER_STANDINGS (
+                CHARACTER_ID INTEGER NOT NULL,
+                NPC_TYPE_ID  INTEGER NOT NULL,
+                NPC_TYPE     TEXT    NOT NULL,
+                NPC_NAME     TEXT    NOT NULL,
+                STANDING     REAL    NOT NULL DEFAULT 0,
+                PRIMARY KEY (CHARACTER_ID, NPC_TYPE_ID)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS CURRENT_RESEARCH_AGENTS (
+                AGENT_ID            INTEGER NOT NULL,
+                SKILL_TYPE_ID       INTEGER NOT NULL,
+                RP_PER_DAY          REAL    NOT NULL DEFAULT 0,
+                RESEARCH_START_DATE TEXT    NOT NULL,
+                REMAINDER_POINTS    REAL    NOT NULL DEFAULT 0,
+                CHARACTER_ID        INTEGER NOT NULL,
+                PRIMARY KEY (AGENT_ID, CHARACTER_ID)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS RESEARCH_AGENTS (
+                AGENT_ID   INTEGER NOT NULL,
+                AGENT_NAME TEXT    NOT NULL,
+                RP_PER_DAY REAL    NOT NULL DEFAULT 0,
+                LEVEL      INTEGER NOT NULL DEFAULT 0,
+                STATION    TEXT    NOT NULL,
+                PRIMARY KEY (AGENT_ID)
+            )
+            """);
+
+        _keeper.Execute("""
             CREATE TABLE IF NOT EXISTS OWNED_BLUEPRINTS (
                 USER_ID        INTEGER NOT NULL,
                 ITEM_ID        INTEGER NOT NULL,
