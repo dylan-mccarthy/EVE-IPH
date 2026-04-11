@@ -47,7 +47,6 @@ The current repository state matches the intended Phase 1–6 extraction goals c
 
 **Known gaps relative to the original Phase 0 checklist:**
 
-- No GitHub Actions workflow is present yet.
 - The Avalonia UI host project exists but does not contain application code.
 
 ---
@@ -417,7 +416,7 @@ This phase establishes the shared price lookup layer needed by manufacturing, re
 
 1. **Phase 11 next** — start the Avalonia host now that the remaining asset, industry-job, and datacore seams have modern service coverage.
 2. Wire the first read-only screens against the completed Phase 10 services before adding broader UI state or workflows.
-3. Add CI once the next domain slice is underway so future work is gated by automated builds and tests.
+3. Expand the CI workflow once the Avalonia host starts landing so future work is gated by broader automated checks.
 
 ---
 

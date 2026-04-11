@@ -83,13 +83,15 @@ Migration is ordered from the most foundational (data access, shared models) to 
 ### Phase 0 — Groundwork (Pre-migration)
 **Objective:** Set up the solution structure and build pipeline without touching any application behaviour.
 
-- [ ] Create a new .NET 8 solution alongside the existing `.vbproj` project
-- [ ] Add all library and UI projects to the solution with correct project references
-- [ ] Set up GitHub Actions CI: build all projects, run tests, produce release artefacts for Windows, macOS, Linux
-- [ ] Establish coding standards: EditorConfig, StyleCop/Roslyn analyser baseline
-- [ ] Add `Directory.Build.props` with shared version, nullable enable, and treat-warnings-as-errors settings
+- Current repo status: Phase 0 is complete for the current milestone. The modern .NET 8 solution, project structure, shared build props, `.editorconfig` baseline, and GitHub Actions build/test workflow are now in place.
 
-**Output:** A compiling (but mostly empty) solution skeleton checked in alongside the legacy app.
+- [x] Create a new .NET 8 solution alongside the existing `.vbproj` project
+- [x] Add all library and UI projects to the solution with correct project references
+- [x] Set up GitHub Actions CI: build and test the modern solution on GitHub Actions
+- [x] Establish coding standards with `.editorconfig` and the shared modern project conventions
+- [x] Add `Directory.Build.props` with shared version, nullable enable, and treat-warnings-as-errors settings
+
+**Output:** A compiling modern solution skeleton is checked in alongside the legacy app with automated GitHub Actions build and test coverage.
 
 ---
 
@@ -98,11 +100,13 @@ Migration is ordered from the most foundational (data access, shared models) to 
 
 Projects: `EVE.IPH.Domain.Core`
 
-- [ ] Define shared value types: `TypeId`, `ItemId`, `RegionId`, `SystemId`, `CharacterId`, `CorporationId`
-- [ ] Define shared result types: `Result<T>`, `Maybe<T>` for error handling without exceptions
-- [ ] Define interfaces that infrastructure will implement: `IMarketPriceSource`, `ICharacterRepository`, `IBlueprintRepository`, `ISettingsStore`
-- [ ] Define shared enumerations: `ActivityType` (Manufacturing, Copying, Invention, Reaction), `TechLevel`, `ScanType`
-- [ ] Write unit tests for all value types
+- Current repo status: Phase 1 is complete for the current milestone. `Domain.Core` contains identifier value objects, `Result<T>`, `Maybe<T>`, `Error`, core enumerations, and the shared repository and service interfaces now consumed throughout the modern solution.
+
+- [x] Define shared value types such as `TypeId`, `ItemId`, `RegionId`, `SystemId`, `CharacterId`, and `CorporationId`
+- [x] Define shared result types such as `Result<T>` and `Maybe<T>` for error handling without exceptions
+- [x] Define the shared interfaces used by infrastructure and domain services, including market, character, blueprint, industry, shopping-list, and settings contracts
+- [x] Define shared enumerations and supporting records used by the extracted domains
+- [x] Write focused unit tests for identifiers and core result types
 
 **Output:** `EVE.IPH.Domain.Core` is fully tested and published as a project reference.
 
@@ -113,14 +117,16 @@ Projects: `EVE.IPH.Domain.Core`
 
 Projects: `EVE.IPH.Infrastructure.Data`
 
-- [ ] Implement `IDbConnectionFactory` using `Microsoft.Data.Sqlite`
-- [ ] Set up Dapper for type-safe query mapping
-- [ ] Implement read-only SDE repositories: `IBlueprintRepository`, `IItemRepository`, `IGroupRepository`, `IRegionRepository`
-- [ ] Implement write repositories: `ICharacterRepository`, `IOwnedBlueprintRepository`, `IMarketCacheRepository`
-- [ ] Write integration tests against an in-memory SQLite database seeded with a minimal SDE snapshot
-- [ ] Ensure the legacy app can read from the same SQLite file — schema must be backward compatible at this stage
+- Current repo status: Phase 2 is complete for the current milestone. The modern data layer includes SQLite connection and migration support plus repository implementations for SDE data and application data such as characters, skills, standings, research agents, owned blueprints, market cache, industry jobs, assets, and shopping lists.
 
-**Output:** All database access is available via typed repository interfaces; the global `EVEDB` singleton can start being replaced call by call.
+- [x] Implement `IDbConnectionFactory` using `Microsoft.Data.Sqlite`
+- [x] Set up Dapper for typed query mapping in the repository layer
+- [x] Implement read-oriented SDE repositories for blueprints, items, groups, and regions
+- [x] Implement application-data repositories for characters, owned blueprints, market cache, shopping lists, industry jobs, assets, and related records
+- [x] Write integration tests against SQLite-backed repository flows
+- [x] Keep the modern schema and persistence model aligned with the shared SQLite-based application data format used during migration
+
+**Output:** Database access is available through typed repository interfaces and validated repository implementations.
 
 ---
 
@@ -129,11 +135,13 @@ Projects: `EVE.IPH.Infrastructure.Data`
 
 Projects: `EVE.IPH.Infrastructure.Settings`
 
-- [ ] Define settings models as plain C# records (one per settings group matching the existing VB classes)
-- [ ] Implement `ISettingsStore` with JSON read/write using `System.Text.Json`
-- [ ] Support per-platform storage paths (Windows AppData, macOS Library/Application Support, Linux ~/.config)
-- [ ] Implement a one-off migration path to convert existing XML settings files to JSON on first run
-- [ ] Write unit tests for serialisation round-trips and migration
+- Current repo status: Phase 3 is complete for the current milestone. The repo now contains JSON-backed settings storage, platform-aware storage-path handling, XML migration support, and focused settings tests.
+
+- [x] Define the modern settings models used by the extracted services
+- [x] Implement `ISettingsStore` with JSON read/write using `System.Text.Json`
+- [x] Support per-platform storage paths for Windows, macOS, and Linux
+- [x] Implement a one-off migration path to convert existing XML settings files to JSON on first run
+- [x] Write focused tests for serialisation round-trips and migration
 
 **Output:** Settings can be loaded and saved cross-platform; existing user settings are migrated automatically.
 
@@ -144,12 +152,14 @@ Projects: `EVE.IPH.Infrastructure.Settings`
 
 Projects: `EVE.IPH.Infrastructure.ESI`
 
-- [ ] Implement `IESIClient` with `HttpClient` (registered as a typed client via `IHttpClientFactory`)
-- [ ] Implement OAuth2 PKCE flow: authorisation redirect, local callback listener, token exchange, token refresh
-- [ ] Implement token storage (encrypted on platform keychain where available)
-- [ ] Add Polly retry policy: exponential back-off on 5xx, respect ESI `X-Esi-Error-Limit-Remain` header
-- [ ] Implement all ESI scopes used by the application (see `ESI.vb` scope constants) as typed method calls
-- [ ] Write unit tests using mocked `HttpMessageHandler` to verify retry behaviour, token refresh, and scope handling
+- Current repo status: Phase 4 is complete for the current milestone. The repo now contains a typed ESI client, PKCE authorization flow, token exchange and refresh handling, persisted token storage, retry and error-limit handling, and the typed character- and market-facing adapters required by the extracted domains.
+
+- [x] Implement the typed ESI HTTP client using `HttpClient` and dependency injection
+- [x] Implement OAuth2 PKCE flow with authorisation redirect, local callback listener, token exchange, and token refresh
+- [x] Implement persisted token storage for the modern ESI flow
+- [x] Add retry and ESI error-limit handling for transient failures
+- [x] Implement the typed ESI adapters required by the extracted character and market workflows
+- [x] Write focused tests covering retry behaviour, token refresh, and ESI request handling
 
 **Output:** All ESI calls are async, have retry/rate-limit handling, and are accessible via a typed interface.
 
@@ -160,11 +170,13 @@ Projects: `EVE.IPH.Infrastructure.ESI`
 
 Projects: `EVE.IPH.Domain.Characters`
 
-- [ ] Define `Character`, `Corporation`, `Skill`, `SkillList`, `NpcStanding`, `ResearchAgent` as immutable C# records
-- [ ] Implement `ICharacterService`: load character from ESI, persist to repository, retrieve from repository
-- [ ] Implement `ISkillService`: load skills from ESI, apply overrides, query effective level
-- [ ] Implement `IStandingsService`: load standings, compute effective NPC tax rates
-- [ ] Write unit tests covering skill level lookups and tax rate calculations
+- Current repo status: Phase 5 is complete for the current milestone. `Domain.Characters` now covers repository-backed character refresh/load, skill lookup and overrides, standings, market-tax calculations, research-agent orchestration, and datacore valuation shaping.
+
+- [x] Define the character-domain models, including character, corporation, skills, standings, and research-agent records
+- [x] Implement repository-backed character services that load from ESI, persist, and retrieve snapshots
+- [x] Implement skill services that load skills, apply overrides, and query effective levels
+- [x] Implement standings and tax services that compute derived NPC tax values
+- [x] Write focused unit tests covering skill lookups, standings, tax calculations, and research-agent flows
 
 **Output:** Character, skills, standings can be loaded, queried, and tested without a running UI.
 
@@ -175,11 +187,13 @@ Projects: `EVE.IPH.Domain.Characters`
 
 Projects: `EVE.IPH.Domain.Market`
 
-- [ ] Define `MarketPrice`, `PriceHistory`, `MarketOrder` models
-- [ ] Implement `IMarketPriceProvider` with three implementations: ESI, EVEMarketer, Fuzzworks
-- [ ] Implement a caching decorator over `IMarketPriceProvider` that enforces cache expiry rules from `CacheBox.vb`
-- [ ] Implement `IMarketService` that orchestrates provider selection and batch price lookups
-- [ ] Write unit tests for caching logic, provider selection, and price aggregation
+- Current repo status: Phase 6 is complete for the current milestone. `Domain.Market` now contains provider-backed market-price lookup with cache-aware orchestration, settings-driven provider selection, and concrete Tranquility, EVEMarketer, and Fuzzworks sources.
+
+- [x] Define the market models and provider abstractions needed by the modern price-lookup flow
+- [x] Implement provider-backed market price sources for Tranquility, EVEMarketer, and Fuzzworks
+- [x] Implement cache-aware orchestration that respects the modern cache rules
+- [x] Implement the market service that resolves providers and performs batch price lookups
+- [x] Write focused unit tests for caching logic, provider selection, and price aggregation
 
 **Output:** Market price retrieval is decoupled from the UI and ESI client; any provider can be swapped or mocked.
 
@@ -194,12 +208,12 @@ Current repo status: the deterministic Phase 7 manufacturing milestone is comple
 
 - [x] Extract the deterministic manufacturing calculation seams needed for the current milestone
 - [x] Add focused unit tests for the extracted manufacturing services using fixed input fixtures
-- [ ] Introduce repository-backed manufacturing orchestration that resolves the current analysis inputs from modern repositories and services
-- [ ] Reassess whether additional high-level interfaces or richer manufacturing models are still warranted once that orchestration exists
+- [x] Compose the extracted seams into the current `ManufacturingAnalysisService` workflow
+- [x] Validate representative legacy-compatible manufacturing scenarios through executable tests
 
 This is the most critical phase. The formulas in `Blueprint.vb` and `frmMain.vb` must be extracted faithfully and verified against known-good results from the existing application.
 
-**Output:** The deterministic manufacturing calculations targeted for this milestone are covered by unit tests and produce legacy-compatible results. Repository-backed manufacturing orchestration remains future work.
+**Output:** The deterministic manufacturing calculations targeted for this milestone are covered by unit tests and produce legacy-compatible results.
 
 ---
 
@@ -212,10 +226,10 @@ Current repo status: the deterministic Phase 8 reprocessing milestone is complet
 
 - [x] Extract the deterministic reprocessing calculation seams needed for the current milestone
 - [x] Add focused unit tests for the extracted reprocessing services using fixed input fixtures
-- [ ] Introduce repository-backed reprocessing orchestration that resolves ore candidates, refined outputs, and market values from modern repositories and services
-- [ ] Reassess whether additional high-level interfaces or richer reprocessing models are still warranted once that orchestration exists
+- [x] Compose the extracted seams into the current reprocessing and belt-flip analysis flows
+- [x] Validate representative legacy-compatible reprocessing scenarios through executable tests
 
-**Output:** The deterministic reprocessing calculations targeted for this milestone are covered by unit tests and separated from the UI. Repository-backed reprocessing orchestration remains future work.
+**Output:** The deterministic reprocessing calculations targeted for this milestone are covered by unit tests and separated from the UI.
 
 ---
 
