@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EVE.IPH.Domain.Assets/EVE.IPH.Domain.Assets.csproj" />
+    <Project Path="src/EVE.IPH.Domain.Characters/EVE.IPH.Domain.Characters.csproj" />
+    <Project Path="src/EVE.IPH.Domain.Core/EVE.IPH.Domain.Core.csproj" />
+    <Project Path="src/EVE.IPH.Domain.Industry/EVE.IPH.Domain.Industry.csproj" />
+    <Project Path="src/EVE.IPH.Domain.Manufacturing/EVE.IPH.Domain.Manufacturing.csproj" />
+    <Project Path="src/EVE.IPH.Domain.Market/EVE.IPH.Domain.Market.csproj" />
+    <Project Path="src/EVE.IPH.Domain.Reprocessing/EVE.IPH.Domain.Reprocessing.csproj" />
+    <Project Path="src/EVE.IPH.Domain.ShoppingList/EVE.IPH.Domain.ShoppingList.csproj" />
+    <Project Path="src/EVE.IPH.Infrastructure.Data/EVE.IPH.Infrastructure.Data.csproj" />
+    <Project Path="src/EVE.IPH.Infrastructure.ESI/EVE.IPH.Infrastructure.ESI.csproj" />
+    <Project Path="src/EVE.IPH.Infrastructure.Settings/EVE.IPH.Infrastructure.Settings.csproj" />
+    <Project Path="src/EVE.IPH.UI.Avalonia/EVE.IPH.UI.Avalonia.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EVE.IPH.Domain.Core.Tests/EVE.IPH.Domain.Core.Tests.csproj" />
+    <Project Path="tests/EVE.IPH.Domain.Manufacturing.Tests/EVE.IPH.Domain.Manufacturing.Tests.csproj" />
+    <Project Path="tests/EVE.IPH.Domain.Market.Tests/EVE.IPH.Domain.Market.Tests.csproj" />
+    <Project Path="tests/EVE.IPH.Domain.Reprocessing.Tests/EVE.IPH.Domain.Reprocessing.Tests.csproj" />
+    <Project Path="tests/EVE.IPH.Domain.ShoppingList.Tests/EVE.IPH.Domain.ShoppingList.Tests.csproj" />
+  </Folder>
+</Solution>

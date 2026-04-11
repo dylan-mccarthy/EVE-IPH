@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\EVE.IPH.Domain.Core\EVE.IPH.Domain.Core.csproj" />
+    <ProjectReference Include="..\EVE.IPH.Domain.Characters\EVE.IPH.Domain.Characters.csproj" />
+    <ProjectReference Include="..\EVE.IPH.Domain.Market\EVE.IPH.Domain.Market.csproj" />
+    <ProjectReference Include="..\EVE.IPH.Domain.Manufacturing\EVE.IPH.Domain.Manufacturing.csproj" />
+    <ProjectReference Include="..\EVE.IPH.Domain.Reprocessing\EVE.IPH.Domain.Reprocessing.csproj" />
+    <ProjectReference Include="..\EVE.IPH.Domain.ShoppingList\EVE.IPH.Domain.ShoppingList.csproj" />
+    <ProjectReference Include="..\EVE.IPH.Domain.Industry\EVE.IPH.Domain.Industry.csproj" />
+    <ProjectReference Include="..\EVE.IPH.Domain.Assets\EVE.IPH.Domain.Assets.csproj" />
+    <ProjectReference Include="..\EVE.IPH.Infrastructure.ESI\EVE.IPH.Infrastructure.ESI.csproj" />
+    <ProjectReference Include="..\EVE.IPH.Infrastructure.Data\EVE.IPH.Infrastructure.Data.csproj" />
+    <ProjectReference Include="..\EVE.IPH.Infrastructure.Settings\EVE.IPH.Infrastructure.Settings.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,16 @@
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/bin/Debug/net8.0/EVE.IPH.Domain.Reprocessing.deps.json
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/bin/Debug/net8.0/EVE.IPH.Domain.Reprocessing.dll
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/bin/Debug/net8.0/EVE.IPH.Domain.Reprocessing.pdb
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/bin/Debug/net8.0/EVE.IPH.Domain.Core.dll
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/bin/Debug/net8.0/EVE.IPH.Domain.Core.pdb
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/obj/Debug/net8.0/EVE.IPH.Domain.Reprocessing.csproj.AssemblyReference.cache
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/obj/Debug/net8.0/EVE.IPH.Domain.Reprocessing.GeneratedMSBuildEditorConfig.editorconfig
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/obj/Debug/net8.0/EVE.IPH.Domain.Reprocessing.AssemblyInfoInputs.cache
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/obj/Debug/net8.0/EVE.IPH.Domain.Reprocessing.AssemblyInfo.cs
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/obj/Debug/net8.0/EVE.IPH.Domain.Reprocessing.csproj.CoreCompileInputs.cache
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/obj/Debug/net8.0/EVE.IPH.Domain.Reprocessing.sourcelink.json
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/obj/Debug/net8.0/EVE.IPH..A33DFD44.Up2Date
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/obj/Debug/net8.0/EVE.IPH.Domain.Reprocessing.dll
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/obj/Debug/net8.0/refint/EVE.IPH.Domain.Reprocessing.dll
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/obj/Debug/net8.0/EVE.IPH.Domain.Reprocessing.pdb
+/home/runner/work/EVE-IPH/EVE-IPH/src/EVE.IPH.Domain.Reprocessing/obj/Debug/net8.0/ref/EVE.IPH.Domain.Reprocessing.dll
