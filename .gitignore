@@ -1,28 +1,26 @@
-bin/
-**/bin/
-obj/
-**/obj/
-Service References/*
+# Build outputs
+[Bb]in/
+[Oo]bj/
+**/[Bb]in/
+**/[Oo]bj/
+
+# Test output
+TestResults/
+**/TestResults/
+
+# Visual Studio / Rider user state
+.vs/
 *.suo
 *.user
-EVE Isk per Hour.vbproj
 *.vsidx
-*.json
-*.json
-EVE-IPH-Update-Program/obj/x86/Debug/EVEIPH Updater.exe
-EVE-IPH-Update-Program/obj/x86/Debug/EVEIPH Updater.pdb
-EVE-IPH-Update-Program/obj/x86/Debug/EVEIPH Updater.vbproj.AssemblyReference.cache
-EVE-IPH-Update-Program/obj/x86/Debug/EVEIPH Updater.vbproj.FileListAbsolute.txt
-EVEIPH SQLite DLL Updater/obj/Debug/EVEIPH SQLite DLL Updater.exe
-EVEIPH SQLite DLL Updater/obj/Debug/EVEIPH SQLite DLL Updater.pdb
-EVEIPH SQLite DLL Updater/obj/Debug/EVEIPH SQLite DLL Updater.vbproj.AssemblyReference.cache
+
+# Generated caches
+*.cache
+
+# Legacy service references
+Service References/
+**/Service References/
+
+# Legacy project artifacts that should not be versioned
 Root Directory/EVEIPH SQLite DLL Updater.exe
 Root Directory/EVEIPH SQLite DLL Updater.pdb
-*.cache
-EVEIPH SQLite DLL Updater/obj/Debug/DesignTimeResolveAssemblyReferencesInput.cache
-EVEIPH SQLite DLL Updater/obj/Debug/EVEIPH SQLite DLL Updater.vbproj.AssemblyReference.cache
-*.cache
-*.cache
-EVEIPH SQLite DLL Updater/obj/Debug/EVEIPH SQLite DLL Updater.vbproj.AssemblyReference.cache
-EVE-IPH-Update-Program/obj/x86/Debug/DesignTimeResolveAssemblyReferencesInput.cache
-EVEIPH SQLite DLL Updater/obj/Debug/DesignTimeResolveAssemblyReferencesInput.cache
