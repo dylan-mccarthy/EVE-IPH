@@ -15,11 +15,14 @@ The repository has moved beyond the initial scaffold. The modern solution exists
 **Verified state:**
 
 - `dotnet test .\\EVE-IPH-Modern.slnx --configuration Release` passes.
-- The current test suite contains **132 passing tests**, including focused coverage for `Infrastructure.ESI`.
+- The current test suite contains **150 passing tests**, including focused coverage for the first `Domain.Characters` services.
+
+**Started but not yet complete:**
+
+- **Phase 5 — Domain.Characters:** foundational skill lookup, standings, character-derived market tax services, and repository-backed character orchestration contracts are now implemented and covered by tests, but infrastructure implementations for the new character contracts are still pending.
 
 **Not yet implemented in a meaningful way:**
 
-- `EVE.IPH.Domain.Characters`
 - `EVE.IPH.Domain.Market`
 - `EVE.IPH.Domain.Manufacturing`
 - `EVE.IPH.Domain.Reprocessing`
