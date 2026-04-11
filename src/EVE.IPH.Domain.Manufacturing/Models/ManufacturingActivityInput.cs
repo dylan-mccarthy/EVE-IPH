@@ -1,0 +1,28 @@
+namespace EVE.IPH.Domain.Manufacturing.Models;
+
+public sealed record ManufacturingActivityInput(
+    bool IsTech3,
+    bool IncludeCopyUsage,
+    bool IncludeInventionUsage,
+    bool IncludeCopyTime,
+    bool IncludeInventionTime,
+    long TotalInventedRuns,
+    int NumberOfInventionJobs,
+    int NumberOfInventionSessions,
+    int UserCopyRuns,
+    double EstimatedItemValue,
+    double CopyCostIndex,
+    double CopyFwCostBonus,
+    double CopyFacilityCostMultiplier,
+    double CopyFacilityTaxRate,
+    double InventionCostIndex,
+    double InventionFwCostBonus,
+    double InventionFacilityCostMultiplier,
+    double InventionFacilityTaxRate,
+    long BaseCopyTimeSeconds,
+    long BaseInventionTimeSeconds,
+    int ScienceSkillLevel,
+    int AdvancedIndustrySkillLevel,
+    double CopyFacilityTimeMultiplier,
+    double InventionFacilityTimeMultiplier,
+    double CopyImplantBonus);

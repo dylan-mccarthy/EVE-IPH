@@ -14,8 +14,10 @@
     <Project Path="src/EVE.IPH.UI.Avalonia/EVE.IPH.UI.Avalonia.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/EVE.IPH.Domain.Assets.Tests/EVE.IPH.Domain.Assets.Tests.csproj" />
     <Project Path="tests/EVE.IPH.Domain.Characters.Tests/EVE.IPH.Domain.Characters.Tests.csproj" />
     <Project Path="tests/EVE.IPH.Domain.Core.Tests/EVE.IPH.Domain.Core.Tests.csproj" />
+    <Project Path="tests/EVE.IPH.Domain.Industry.Tests/EVE.IPH.Domain.Industry.Tests.csproj" />
     <Project Path="tests/EVE.IPH.Domain.Manufacturing.Tests/EVE.IPH.Domain.Manufacturing.Tests.csproj" />
     <Project Path="tests/EVE.IPH.Domain.Market.Tests/EVE.IPH.Domain.Market.Tests.csproj" />
     <Project Path="tests/EVE.IPH.Domain.Reprocessing.Tests/EVE.IPH.Domain.Reprocessing.Tests.csproj" />

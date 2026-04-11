@@ -13,27 +13,24 @@ The repository has moved beyond the initial scaffold. The modern solution exists
 - **Phase 4 — Infrastructure.ESI:** typed ESI HTTP client, retry/error-limit handling, PKCE authorization request generation, token exchange/refresh, interactive localhost callback flow, file-based token persistence, and typed character/market-facing adapters are implemented.
 - **Phase 5 — Domain.Characters:** skill lookup, standings, character-derived market tax services, repository-backed character orchestration, SQLite-backed skills/standings/research-agent persistence, and ESI-backed character plus research-agent data sources are now implemented.
 - **Phase 6 — Domain.Market:** provider-backed market price lookup is now implemented with cache-aware orchestration, settings-driven provider selection, and concrete Tranquility, EVEMarketer, and Fuzzworks sources.
+- **Phase 7 — Domain.Manufacturing:** the current deterministic manufacturing milestone is now complete, covering the core material/time calculator, profitability and ISK-per-hour calculation, invention planning math, copy/invention activity time and usage formulas, blueprint-level invention/copy cost rollup, blueprint versus total production-time rollup, the recursive component production-time scheduling heuristic, manufacturing facility usage, usage allocation, sale adjustment, build-skill prerequisite evaluation, the pure build-vs-buy decision seam from `GetBuildFlag`, and the composed `ManufacturingAnalysisService` flow.
+- **Phase 8 — Domain.Reprocessing:** the current deterministic reprocessing milestone is now complete, covering the base reprocessing yield/output calculator, the ore-conversion optimizer over resolved ore candidate yields, and the belt-flip profitability calculator over resolved belt composition and market values.
 - **Phase 9 — Domain.ShoppingList:** material aggregation, legacy-compatible duplicate merging, repository-backed load/save orchestration, build-vs-buy projections, invention/copy/final-item list views, and on-hand subtraction are now implemented for the current milestone.
 
 **Verified state:**
 
 - `dotnet test .\\EVE-IPH-Modern.slnx --configuration Release` passes.
-- The current test suite contains **204 passing tests**, including focused `Domain.Manufacturing`, `Domain.Reprocessing`, `Domain.ShoppingList`, `Domain.Characters`, `Infrastructure.ESI`, `Infrastructure.Data`, `Infrastructure.Settings`, and `Domain.Market` coverage.
+- The current test suite contains **293 passing tests**, including focused `Domain.Assets`, `Domain.Industry`, `Domain.Manufacturing`, `Domain.Reprocessing`, `Domain.ShoppingList`, `Domain.Characters`, `Infrastructure.ESI`, `Infrastructure.Data`, `Infrastructure.Settings`, and `Domain.Market` coverage.
 
 **Started but not yet complete:**
 
-- **Phase 7 — Domain.Manufacturing:** the first deterministic manufacturing calculator slice is implemented, but broader blueprint profitability, invention, and build-vs-buy orchestration are still ahead.
-- **Phase 8 — Domain.Reprocessing:** the first deterministic reprocessing yield/output calculator slice is implemented, but ore-conversion and belt-flip workflows are still ahead.
+- **Phase 10 — Domain.Assets / Domain.Industry:** the first deterministic `Domain.Industry` slice is now implemented, covering legacy-compatible industry-job state classification plus current-job manufacturing/research/reaction summarization. Early `Domain.Assets` slices are also implemented, covering legacy-compatible asset location and item display projection rules, asset-tree parent/container projection rules, and filtered material-asset ancestry selection used by the legacy tree and build-material views.
 
 **Not yet implemented in a meaningful way:**
 
-- `EVE.IPH.Domain.Manufacturing`
-- `EVE.IPH.Domain.Reprocessing`
-- `EVE.IPH.Domain.Assets`
-- `EVE.IPH.Domain.Industry`
 - `EVE.IPH.UI.Avalonia`
 
-`EVE.IPH.Domain.Assets`, `EVE.IPH.Domain.Industry`, and `EVE.IPH.UI.Avalonia` still exist mainly as project shells. `EVE.IPH.Domain.Manufacturing`, `EVE.IPH.Domain.Reprocessing`, and `EVE.IPH.Domain.ShoppingList` now have focused executable coverage and no longer belong in the shell-only category.
+`EVE.IPH.UI.Avalonia` still exists mainly as a project shell. `EVE.IPH.Domain.Assets`, `EVE.IPH.Domain.Manufacturing`, `EVE.IPH.Domain.Reprocessing`, `EVE.IPH.Domain.ShoppingList`, and the first `EVE.IPH.Domain.Industry` slice now have focused executable coverage and no longer belong in the shell-only category.
 
 ---
 
@@ -55,17 +52,17 @@ The current repository state matches the intended Phase 1–6 extraction goals c
 
 ---
 
-## Next Milestone: Manufacturing Calculation Extraction (Phase 7)
+## Next Milestone: Assets, Industry, and UI Preparation
 
-**Goal:** Build out `Domain.Manufacturing` on top of the completed character and market foundations so blueprint cost, material requirement, and build-vs-buy workflows can move out of the legacy app.
+**Goal:** Continue the remaining post-manufacturing and post-reprocessing extraction work by expanding assets and industry, then moving meaningful effort into the Avalonia host.
 
-**Why this is next:** the manufacturing formulas are the highest-value remaining legacy logic, and the prerequisite seams now exist: blueprint/item repositories live in Phase 2, character skills and standings live in Phase 5, and provider-backed market prices live in Phase 6.
+**Why this is next:** the deterministic Phase 7 and Phase 8 targets are now complete for the current milestone, so the next highest-value work is to finish the remaining domain-heavy slices while preserving the same test-first extraction pattern.
 
-**Initial extraction target:** start with the pure calculation path that turns one blueprint, one facility context, one character snapshot, and one market snapshot into a deterministic manufacturing result. Keep the first slice UI-free and persistence-light.
+**Initial extraction target:** continue Phase 10 on the same narrow deterministic path by extending the current assets and industry slices before expanding orchestration or UI.
 
-**Primary legacy files to study first:** `Blueprint.vb`, `ManufacturingFacility.vb`, manufacturing-heavy sections of `frmMain.vb`, `frmBlueprintManagement.vb`, `frmBlueprintList.vb`.
+**Primary legacy files to study first:** the remaining asset and industry files from `EVEAssets.vb`, `AssetViewer.vb`, `frmAssetsViewer.vb`, `EVEIndustryJobs.vb`, and `frmIndustryJobsViewer.vb`, then the surviving UI-heavy workflows in `frmMain.vb`.
 
-**Definition of ready for Phase 7:** capture a small set of known-good legacy manufacturing scenarios and promote them into repeatable tests before copying formulas.
+**Definition of ready for the next milestone:** capture known-good legacy asset and industry scenarios and promote them into repeatable tests before copying formulas.
 
 ---
 
@@ -146,13 +143,62 @@ This phase establishes the shared price lookup layer needed by manufacturing, re
 
 **Objective:** extract blueprint profitability, invention, facility bonuses, and build-vs-buy calculations into deterministic services.
 
-**Planned first models/services:**
+**Current progress:** this phase is complete for the current deterministic manufacturing milestone. It now includes eleven pure calculation seams lifted from the legacy `Blueprint.vb` logic plus two higher-order pure services: the run/material/time calculator, the final profitability calculator that derives raw/component cost, profit percent, and ISK-per-hour once the material and timing inputs are known, the invention planning calculator that derives invention chance, invented runs, job counts, sessions, and per-run invention cost from decryptor and skill inputs, the copy/invention activity calculator that derives copy time, invention time, and per-run installation usage from facility and skill inputs, the cost rollup calculator that converts those per-run invention/copy values into legacy-compatible blueprint-level invention cost, copy cost, and total usage, the timeline rollup calculator that converts base blueprint time plus copy/invention/component time into the final blueprint and total production timelines, the component scheduling calculator that reproduces the legacy recursive line-packing heuristic used to estimate total component production time, the manufacturing facility-usage calculator that reproduces the legacy `EIV * (index bonuses + facility tax + SCC + alpha)` cost formula including the Fulcrum pirate surcharge reduction and reaction-routing branch, the usage-allocation calculator that reproduces the `SetPriceData` branch for combining main manufacturing usage, component usage, carried reaction usage, and optional reprocessing usage, the sale-adjustment calculator that reproduces the legacy `AdjustPriceforTaxesandFees` deduction logic for excess-sale proceeds including optional sales tax, standard or special broker fee calculation, and the minimum 100 ISK broker fee floor, the build-vs-buy decision calculator that reproduces the deterministic `GetBuildFlag` branch over cost comparison, new-request defaults, market-insufficiency override, and manual override inputs, `ManufacturingAnalysisService`, which composes those calculators into a single domain-facing manufacturing analysis result from already-resolved inputs, and `ManufacturingPrerequisiteService`, which evaluates build-skill requirements and advanced-manufacturing time-reduction multipliers from resolved character skill levels.
 
-- `Blueprint`, `ManufacturingRun`, `IndustryFacility`, `FacilityBonus`, `Decryptor`, `ManufacturingResult`
-- `IBlueprintCalculator`
-- `IFacilityBonusCalculator`
-- `IInventionCalculator`
-- `IBuildBuyDecider`
+**Implemented slices:**
+
+- `ManufacturingJobInput`
+- `ManufacturingJobResult`
+- `ManufacturingJobCalculator`
+- `ManufacturingProfitabilityInput`
+- `ManufacturingProfitabilityResult`
+- `ManufacturingProfitabilityCalculator`
+- `InventionDecryptorModifier`
+- `InventionPlanInput`
+- `InventionPlanResult`
+- `InventionCalculator`
+- `ManufacturingActivityInput`
+- `ManufacturingActivityResult`
+- `ManufacturingActivityCalculator`
+- `ManufacturingCostInput`
+- `ManufacturingCostResult`
+- `ManufacturingCostCalculator`
+- `ManufacturingTimelineInput`
+- `ManufacturingTimelineResult`
+- `ManufacturingTimelineCalculator`
+- `ComponentProductionScheduleInput`
+- `ComponentProductionScheduleResult`
+- `ComponentProductionScheduleCalculator`
+- `ManufacturingAnalysisInput`
+- `ManufacturingAnalysisResult`
+- `ManufacturingAnalysisService`
+- `ManufacturingSkillRequirement`
+- `ManufacturingPrerequisiteInput`
+- `ManufacturingPrerequisiteResult`
+- `ManufacturingPrerequisiteService`
+- `ManufacturingFacilityUsageInput`
+- `ManufacturingFacilityUsageResult`
+- `ManufacturingFacilityUsageCalculator`
+- `ManufacturingUsageAllocationInput`
+- `ManufacturingUsageAllocationResult`
+- `ManufacturingUsageAllocationCalculator`
+- `SalesBrokerFeeMode`
+- `ManufacturingSaleAdjustmentInput`
+- `ManufacturingSaleAdjustmentResult`
+- `ManufacturingSaleAdjustmentCalculator`
+- `ManufacturingBuildBuyInput`
+- `ManufacturingBuildBuyResult`
+- `ManufacturingBuildBuyDecider`
+
+**Focused validation:**
+
+- `dotnet test .\tests\EVE.IPH.Domain.Manufacturing.Tests\EVE.IPH.Domain.Manufacturing.Tests.csproj --configuration Release` passes with 54 tests.
+
+**Deferred follow-on work beyond this milestone:**
+
+- repository-backed manufacturing workflows that resolve the already-modeled inputs from SDE, settings, character data, and market snapshots
+- broader domain-facing manufacturing orchestration and any interfaces that prove useful once those repository-backed workflows are introduced
+- any later facility- or blueprint-rich abstractions that are justified by composition needs rather than by the old phase-7 design sketch
 
 **Dependencies already available:**
 
@@ -160,22 +206,52 @@ This phase establishes the shared price lookup layer needed by manufacturing, re
 - Character skills and tax inputs from Phase 5
 - Provider-backed market prices from Phase 6
 
-**First testable slice:**
+**Milestone exit status:**
 
-- material quantity calculation for a single manufacturing run
-- time and facility bonus application
-- profit / ISK-per-hour result for fixed input fixtures
+- focused manufacturing coverage is green with 54 tests
+- the full modern solution is green with 293 tests
+- the deterministic manufacturing calculation seams targeted for this milestone are now extracted and documented
 
 ### Phase 8 — `EVE.IPH.Domain.Reprocessing`
 
 **Objective:** extract ore conversion, refining yield, and belt-flip profitability into a standalone domain library.
 
-**Planned first models/services:**
+**Current progress:** this phase is complete for the current deterministic reprocessing milestone. It now includes the base reprocessing yield/output seam lifted from `ReprocessingPlant.Reprocess`, the ore-conversion optimizer lifted from the `ConvertToOre` LP branch but expressed over already-resolved ore candidate yields and objective values, and the belt-flip profitability seam lifted from `frmIndustryBeltFlip.vb` and `frmIceBeltFlip.vb` over already-resolved belt lines, sale values, mining rates, compression outputs, and reprocessing usage.
 
-- `ReprocessingResult`, `OreYield`, `MiningBeltFlip`
-- `IReprocessingCalculator`
-- `IOreConversionService`
-- `IBeltFlipCalculator`
+**Implemented slices:**
+
+- `ReprocessingCalculationInput`
+- `ReprocessingCalculationResult`
+- `ReprocessingCalculator`
+- `OreConversionInput`
+- `OreConversionRequirement`
+- `OreConversionCandidate`
+- `OreConversionYield`
+- `OreConversionSelection`
+- `OreConversionExcessMaterial`
+- `OreConversionResult`
+- `OreConversionOptimizer`
+- `BeltFlipInput`
+- `BeltFlipLineInput`
+- `BeltFlipOutcome`
+- `BeltFlipResult`
+- `BeltFlipCalculator`
+
+**Focused validation:**
+
+- `dotnet test .\tests\EVE.IPH.Domain.Reprocessing.Tests\EVE.IPH.Domain.Reprocessing.Tests.csproj --configuration Release` passes with 12 tests.
+
+**Deferred follow-on work beyond this milestone:**
+
+- repository-backed ore, ice, and refined-material candidate resolution from SDE and market data
+- higher-level orchestration that turns facility settings, character skills, and selected ore groups into the already-resolved pure inputs used by the current services
+- any later UI-facing or persistence-backed workflows that consume those reprocessing services
+
+**Milestone exit status:**
+
+- focused reprocessing coverage is green with 12 tests
+- the full modern solution is green with 293 tests
+- the deterministic reprocessing calculation seams targeted for this milestone are now extracted and documented
 
 **Primary legacy files:** `ReprocessingPlant.vb`, `ConvertToOre.vb`, `frmReprocessingPlant.vb`, `frmIndustryBeltFlip.vb`, `frmIceBeltFlip.vb`.
 
@@ -216,11 +292,49 @@ This phase establishes the shared price lookup layer needed by manufacturing, re
 
 **Objective:** extract asset inventory, industry jobs, and remaining datacore/agent workflows into testable domain services.
 
+**Current progress:** this phase has now started with first slices in both `Domain.Industry` and `Domain.Assets`. The modern industry code covers legacy-compatible industry-job state classification (`Pending`, `In Progress`, `Complete`, etc.), current-job manufacturing/research/reaction summarization based on the legacy `activityID` rules, and a character-scoped orchestration service that loads stored jobs or refreshes character jobs from the external data source while preserving the legacy `9 -> 11` reaction normalization. The modern assets code now covers the pure location/item display projection rules used by the legacy asset tree, including blueprint copy/original text, industry-job text suffixes, stacked-quantity formatting, the solar-system location suffix for `Space` and `Ship Offline` flags, the structural tree projection rules for base-location nodes, synthetic container nodes, and item parentage, plus the filtered ancestor-chain lookup used to build material-specific asset subsets.
+
 **Planned first models/services:**
 
 - `Asset`, `AssetLocation`, `IndustryJob`, `DatacoreAgent`
 - `IAssetService`
 - `IIndustryJobService`
+
+**Implemented first slice:**
+
+- `AssetDisplayItem`
+- `AssetBlueprintKind`
+- `IAssetDisplayFormatter`
+- `AssetDisplayFormatter`
+- `AssetTreeItem`
+- `AssetTreeNode`
+- `AssetTreeNodeKind`
+- `IAssetTreeProjector`
+- `AssetTreeProjector`
+- `AssetHierarchyItem`
+- `IAssetHierarchyService`
+- `AssetHierarchyService`
+- `IndustryJob`
+- `IndustryJobSnapshot`
+- `IndustryJobState`
+- `IndustryJobSummary`
+- `ICharacterIndustryJobService`
+- `CharacterIndustryJobService`
+- `IIndustryJobService`
+- `IndustryJobService`
+
+**Orchestration groundwork added:**
+
+- `IIndustryJobDataSource`
+- `IIndustryJobRepository`
+- `IndustryJobData`
+- `IndustryJobRecord`
+- `IndustryJobScope`
+
+**Focused validation:**
+
+- `dotnet test .\tests\EVE.IPH.Domain.Assets.Tests\EVE.IPH.Domain.Assets.Tests.csproj --configuration Release` passes with 18 tests.
+- `dotnet test .\tests\EVE.IPH.Domain.Industry.Tests\EVE.IPH.Domain.Industry.Tests.csproj --configuration Release` passes with 14 tests.
 
 **Primary legacy files:** `EVEAssets.vb`, `AssetViewer.vb`, `frmAssetsViewer.vb`, `EVEIndustryJobs.vb`, `frmIndustryJobsViewer.vb`, datacore-related sections of `frmMain.vb`.
 
@@ -266,11 +380,9 @@ This phase establishes the shared price lookup layer needed by manufacturing, re
 
 ## Suggested Work Order
 
-1. **Phase 7 next** — extract manufacturing calculations on top of the completed character and market services.
-2. **Phase 8 after that** — reuse the market abstractions for reprocessing and mining logic rather than adding any new price-retrieval code.
-3. **Phase 10 next** — pull assets and industry jobs into testable services so the Avalonia host consumes modern APIs instead of legacy code.
-4. **Phase 11 after that** — start the Avalonia host only once the remaining domain-heavy workflows have modern service seams.
-5. Add CI once the next domain slice is underway so future work is gated by automated builds and tests.
+1. **Phase 10 next** — continue pulling assets and industry jobs into testable services so the Avalonia host consumes modern APIs instead of legacy code.
+2. **Phase 11 after that** — start the Avalonia host only once the remaining domain-heavy workflows have modern service seams.
+3. Add CI once the next domain slice is underway so future work is gated by automated builds and tests.
 
 ---
 

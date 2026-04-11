@@ -190,16 +190,16 @@ Projects: `EVE.IPH.Domain.Market`
 
 Projects: `EVE.IPH.Domain.Manufacturing`
 
-- [ ] Define `Blueprint`, `ManufacturingRun`, `FacilityBonus`, `IndustryFacility`, `Decryptor` models
-- [ ] Implement `IBlueprintCalculator`: given a blueprint, facility, character skills, market prices → return `ManufacturingResult` with profit, cost, ISK/hour, time
-- [ ] Implement `IInventionCalculator`: given a T1 blueprint and decryptor → return `InventionResult` with probability, resulting T2 blueprint stats
-- [ ] Implement `IFacilityBonusCalculator`: compute rig, structure, and implant bonuses for ME/TE/cost
-- [ ] Implement `IBuildBuyDecider`: given a bill of materials and market prices → return buy vs. build decision for each component
-- [ ] Write comprehensive unit tests for all calculations using fixed test data (SDE values and prices)
+Current repo status: the deterministic Phase 7 manufacturing milestone is complete. The repo now contains extracted material/time, profitability, invention planning, activity, cost rollup, timeline, component scheduling, prerequisite, facility usage, usage allocation, sale-adjustment, build-vs-buy, and composed manufacturing-analysis seams with focused executable tests.
+
+- [x] Extract the deterministic manufacturing calculation seams needed for the current milestone
+- [x] Add focused unit tests for the extracted manufacturing services using fixed input fixtures
+- [ ] Introduce repository-backed manufacturing orchestration that resolves the current analysis inputs from modern repositories and services
+- [ ] Reassess whether additional high-level interfaces or richer manufacturing models are still warranted once that orchestration exists
 
 This is the most critical phase. The formulas in `Blueprint.vb` and `frmMain.vb` must be extracted faithfully and verified against known-good results from the existing application.
 
-**Output:** All manufacturing calculations are covered by unit tests and produce identical results to the legacy code.
+**Output:** The deterministic manufacturing calculations targeted for this milestone are covered by unit tests and produce legacy-compatible results. Repository-backed manufacturing orchestration remains future work.
 
 ---
 
@@ -208,13 +208,14 @@ This is the most critical phase. The formulas in `Blueprint.vb` and `frmMain.vb`
 
 Projects: `EVE.IPH.Domain.Reprocessing`
 
-- [ ] Define `ReprocessingResult`, `OreYield`, `MiningBeltFlip` models
-- [ ] Implement `IReprocessingCalculator`: given ore type, quantity, skills, facility efficiency → return refined materials and taxes
-- [ ] Implement `IOreConversionService`: convert between ore groups (compressed, raw, moon ore variants)
-- [ ] Implement `IBeltFlipCalculator`: given a belt composition and market prices → return profitability of reprocessing vs. raw sale
-- [ ] Write unit tests for yield calculations and belt flip comparisons
+Current repo status: the deterministic Phase 8 reprocessing milestone is complete. The repo now contains extracted reprocessing yield/output, ore-conversion optimization over already-resolved candidate yields and objective values, and belt-flip profitability over already-resolved belt lines, volumes, and market values, all with focused executable tests.
 
-**Output:** Reprocessing logic is tested and separated from the UI.
+- [x] Extract the deterministic reprocessing calculation seams needed for the current milestone
+- [x] Add focused unit tests for the extracted reprocessing services using fixed input fixtures
+- [ ] Introduce repository-backed reprocessing orchestration that resolves ore candidates, refined outputs, and market values from modern repositories and services
+- [ ] Reassess whether additional high-level interfaces or richer reprocessing models are still warranted once that orchestration exists
+
+**Output:** The deterministic reprocessing calculations targeted for this milestone are covered by unit tests and separated from the UI. Repository-backed reprocessing orchestration remains future work.
 
 ---
 
