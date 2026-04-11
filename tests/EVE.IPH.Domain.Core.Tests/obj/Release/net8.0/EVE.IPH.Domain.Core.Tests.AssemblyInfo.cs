@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("EVE.IPH.Domain.Core.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+33bc87e24d3b6cba4ba7685fab2d15d433554cfd")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cf1346c14f218e48dc0588ea67afbb0ccf4cc951")]
 [assembly: System.Reflection.AssemblyProductAttribute("EVE.IPH.Domain.Core.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("EVE.IPH.Domain.Core.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
