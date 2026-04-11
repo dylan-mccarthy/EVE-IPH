@@ -20,17 +20,17 @@ The repository has moved beyond the initial scaffold. The modern solution exists
 **Verified state:**
 
 - `dotnet test .\\EVE-IPH-Modern.slnx --configuration Release` passes.
-- The current test suite contains **293 passing tests**, including focused `Domain.Assets`, `Domain.Industry`, `Domain.Manufacturing`, `Domain.Reprocessing`, `Domain.ShoppingList`, `Domain.Characters`, `Infrastructure.ESI`, `Infrastructure.Data`, `Infrastructure.Settings`, and `Domain.Market` coverage.
+- The current test suite contains **304 passing tests**, including focused `Domain.Assets`, `Domain.Industry`, `Domain.Manufacturing`, `Domain.Reprocessing`, `Domain.ShoppingList`, `Domain.Characters`, `Infrastructure.ESI`, `Infrastructure.Data`, `Infrastructure.Settings`, and `Domain.Market` coverage.
 
-**Started but not yet complete:**
+**Completed or substantially complete:**
 
-- **Phase 10 — Domain.Assets / Domain.Industry:** the first deterministic `Domain.Industry` slice is now implemented, covering legacy-compatible industry-job state classification plus current-job manufacturing/research/reaction summarization. Early `Domain.Assets` slices are also implemented, covering legacy-compatible asset location and item display projection rules, asset-tree parent/container projection rules, and filtered material-asset ancestry selection used by the legacy tree and build-material views.
+- **Phase 10 — Domain.Assets / Domain.Industry:** this phase is now complete for the current pre-Avalonia milestone. `Domain.Industry` now covers legacy-compatible job-state classification, current-job manufacturing/research/reaction summarization, character-scoped refresh/load orchestration, corporation-scoped refresh filtered to known corporation installers, and presentation-row shaping for the legacy industry jobs viewer. `Domain.Assets` now covers repository-backed asset snapshot hydration from stored asset rows plus type/location metadata, deterministic display-formatting, tree projection, filtered material-asset ancestry selection, and non-UI asset-view filtering rules for account scope, blueprint-copy subsets, search text, and sort order. The remaining datacore/research-agent value shaping has also been lifted onto the modern Phase 5 research-agent model.
 
 **Not yet implemented in a meaningful way:**
 
 - `EVE.IPH.UI.Avalonia`
 
-`EVE.IPH.UI.Avalonia` still exists mainly as a project shell. `EVE.IPH.Domain.Assets`, `EVE.IPH.Domain.Manufacturing`, `EVE.IPH.Domain.Reprocessing`, `EVE.IPH.Domain.ShoppingList`, and the first `EVE.IPH.Domain.Industry` slice now have focused executable coverage and no longer belong in the shell-only category.
+`EVE.IPH.UI.Avalonia` still exists mainly as a project shell. `EVE.IPH.Domain.Assets`, `EVE.IPH.Domain.Industry`, `EVE.IPH.Domain.Manufacturing`, `EVE.IPH.Domain.Reprocessing`, and `EVE.IPH.Domain.ShoppingList` now have focused executable coverage and no longer belong in the shell-only category.
 
 ---
 
@@ -52,17 +52,29 @@ The current repository state matches the intended Phase 1–6 extraction goals c
 
 ---
 
-## Next Milestone: Assets, Industry, and UI Preparation
+## Next Milestone: Phase 11 Avalonia Host
 
-**Goal:** Continue the remaining post-manufacturing and post-reprocessing extraction work by expanding assets and industry, then moving meaningful effort into the Avalonia host.
+**Goal:** start wiring the first meaningful Avalonia UI screens against the now-complete Phase 10 domain surfaces.
 
-**Why this is next:** the deterministic Phase 7 and Phase 8 targets are now complete for the current milestone, so the next highest-value work is to finish the remaining domain-heavy slices while preserving the same test-first extraction pattern.
+**Why this is next:** the remaining high-value asset, industry-job, and datacore seams are now extracted into testable domain services, so the next useful risk-reduction step is to prove those APIs in a real cross-platform UI shell instead of continuing to deepen the domain layer in isolation.
 
-**Initial extraction target:** continue Phase 10 on the same narrow deterministic path by extending the current assets and industry slices before expanding orchestration or UI.
+**Current baseline for the milestone:**
 
-**Primary legacy files to study first:** the remaining asset and industry files from `EVEAssets.vb`, `AssetViewer.vb`, `frmAssetsViewer.vb`, `EVEIndustryJobs.vb`, and `frmIndustryJobsViewer.vb`, then the surviving UI-heavy workflows in `frmMain.vb`.
+- `Domain.Industry` now covers state classification, current-job summarization, character refresh/load orchestration, corporation refresh/load orchestration, and stable presentation-row shaping for the legacy industry jobs viewer.
+- `Domain.Assets` now covers snapshot hydration, deterministic display-formatting, tree projection, ancestor-chain filtering, and pure asset-view filtering over owner scope, item subsets, search text, and sort order.
+- `Domain.Characters` now includes datacore valuation shaping on top of the existing research-agent model.
+- The full modern solution is green at **304 passing tests**.
 
-**Definition of ready for the next milestone:** capture known-good legacy asset and industry scenarios and promote them into repeatable tests before copying formulas.
+**Concrete Phase 11 plan:**
+
+1. **Avalonia composition root:** register the modern repositories, infrastructure adapters, and Phase 5-10 domain services in the Avalonia host and prove startup without legacy forms.
+2. **First read-only screens:** wire assets, industry jobs, and research-agent/datacore views against the new domain services so the UI consumes modern APIs instead of VB logic.
+3. **Navigation and shell state:** add the first real window, navigation structure, and loading/error state handling.
+4. **Incremental screen replacement:** move the next highest-value tabs over one at a time while keeping the legacy application available as the fallback reference.
+
+**Primary files to study next:** `App.axaml.cs`, the Avalonia shell project, and the newly completed Phase 10 domain services before reaching back into legacy view code.
+
+**Definition of ready to continue Phase 11:** the Avalonia host can render the first feature-backed screens using only modern services, and legacy VB files are no longer required to power those views.
 
 ---
 
@@ -292,7 +304,7 @@ This phase establishes the shared price lookup layer needed by manufacturing, re
 
 **Objective:** extract asset inventory, industry jobs, and remaining datacore/agent workflows into testable domain services.
 
-**Current progress:** this phase has now started with first slices in both `Domain.Industry` and `Domain.Assets`. The modern industry code covers legacy-compatible industry-job state classification (`Pending`, `In Progress`, `Complete`, etc.), current-job manufacturing/research/reaction summarization based on the legacy `activityID` rules, and a character-scoped orchestration service that loads stored jobs or refreshes character jobs from the external data source while preserving the legacy `9 -> 11` reaction normalization. The modern assets code now covers the pure location/item display projection rules used by the legacy asset tree, including blueprint copy/original text, industry-job text suffixes, stacked-quantity formatting, the solar-system location suffix for `Space` and `Ship Offline` flags, the structural tree projection rules for base-location nodes, synthetic container nodes, and item parentage, plus the filtered ancestor-chain lookup used to build material-specific asset subsets.
+**Current progress:** this phase is now complete for the current milestone. The modern industry code covers legacy-compatible industry-job state classification (`Pending`, `In Progress`, `Complete`, etc.), current-job manufacturing/research/reaction summarization based on the legacy `activityID` rules, character-scoped and corporation-scoped job refresh/load orchestration while preserving the legacy `9 -> 11` reaction normalization, installer filtering for corporation jobs, and stable presentation shaping for the legacy industry jobs viewer. The modern assets code now covers repository-backed asset snapshot hydration from stored asset rows plus type/location metadata, the pure location/item display projection rules used by the legacy asset tree, blueprint copy/original text, industry-job text suffixes, stacked-quantity formatting, the solar-system location suffix for `Space` and `Ship Offline` flags, the structural tree projection rules for base-location nodes, synthetic container nodes, item parentage, the filtered ancestor-chain lookup used to build material-specific asset subsets, and the non-UI asset-view filtering rules for owner scope, blueprint-copy subsets, search text, and sort order. The remaining datacore workflow from the research-agents view is also lifted into a modern datacore valuation service on top of the Phase 5 research-agent model.
 
 **Planned first models/services:**
 
@@ -316,12 +328,33 @@ This phase establishes the shared price lookup layer needed by manufacturing, re
 - `AssetHierarchyService`
 - `IndustryJob`
 - `IndustryJobSnapshot`
+- `CorporationIndustryJobSnapshot`
 - `IndustryJobState`
 - `IndustryJobSummary`
 - `ICharacterIndustryJobService`
 - `CharacterIndustryJobService`
+- `ICorporationIndustryJobService`
+- `CorporationIndustryJobService`
 - `IIndustryJobService`
 - `IndustryJobService`
+- `IndustryJobViewItem`
+- `IndustryJobDisplayRow`
+- `IIndustryJobPresentationService`
+- `IndustryJobPresentationService`
+- `AssetRecord`
+- `AssetTypeMetadata`
+- `AssetLocationMetadata`
+- `HydratedAsset`
+- `AssetViewRequest`
+- `AssetSortMode`
+- `IAssetSnapshotHydrator`
+- `AssetSnapshotHydrator`
+- `IAssetViewFilterService`
+- `AssetViewFilterService`
+- `ResearchAgentDatacoreSnapshot`
+- `ResearchAgentDatacoreSummary`
+- `IResearchAgentDatacoreService`
+- `ResearchAgentDatacoreService`
 
 **Orchestration groundwork added:**
 
@@ -333,10 +366,12 @@ This phase establishes the shared price lookup layer needed by manufacturing, re
 
 **Focused validation:**
 
-- `dotnet test .\tests\EVE.IPH.Domain.Assets.Tests\EVE.IPH.Domain.Assets.Tests.csproj --configuration Release` passes with 18 tests.
-- `dotnet test .\tests\EVE.IPH.Domain.Industry.Tests\EVE.IPH.Domain.Industry.Tests.csproj --configuration Release` passes with 14 tests.
+- `dotnet test .\tests\EVE.IPH.Domain.Assets.Tests\EVE.IPH.Domain.Assets.Tests.csproj --configuration Release` passes with 22 tests.
+- `dotnet test .\tests\EVE.IPH.Domain.Industry.Tests\EVE.IPH.Domain.Industry.Tests.csproj --configuration Release` passes with 19 tests.
+- `dotnet test .\tests\EVE.IPH.Domain.Characters.Tests\EVE.IPH.Domain.Characters.Tests.csproj --configuration Release` passes with 22 tests.
+- `dotnet test .\EVE-IPH-Modern.slnx --configuration Release` passes with 304 tests.
 
-**Primary legacy files:** `EVEAssets.vb`, `AssetViewer.vb`, `frmAssetsViewer.vb`, `EVEIndustryJobs.vb`, `frmIndustryJobsViewer.vb`, datacore-related sections of `frmMain.vb`.
+**Primary legacy files:** `EVEAssets.vb`, `frmAssetsViewer.vb`, `EVEIndustryJobs.vb`, `frmIndustryJobsViewer.vb`, datacore-related sections of `frmMain.vb`.
 
 **Dependency note:** Research-agent persistence is already present from Phase 5, so this phase should extend rather than replace that groundwork.
 
@@ -368,20 +403,20 @@ This phase establishes the shared price lookup layer needed by manufacturing, re
 
 | Criterion | How to verify |
 | --- | --- |
-| `Domain.Manufacturing` builds cleanly on top of the completed character and market foundations | `dotnet build .\\EVE-IPH-Modern.slnx --configuration Release` exits 0 |
-| New manufacturing services are covered by executable tests | `dotnet test .\\EVE-IPH-Modern.slnx --configuration Release` stays green and adds real coverage in `EVE.IPH.Domain.Manufacturing.Tests` |
-| Manufacturing formulas match known-good legacy scenarios for the extracted slice | regression fixtures from legacy outputs pass in unit tests |
+| Avalonia host starts with the modern composition root only | `dotnet build .\\EVE-IPH-Modern.slnx --configuration Release` exits 0 and the Avalonia app can launch without depending on legacy WinForms code |
+| The first Avalonia screens consume only modern services | assets, industry jobs, and datacore/research-agent views resolve data through `Domain.Assets`, `Domain.Industry`, and `Domain.Characters` services rather than VB code |
+| The Phase 10 domain baseline remains stable while UI work lands | `dotnet test .\\EVE-IPH-Modern.slnx --configuration Release` stays green at or above the current 304 passing tests |
 | No new global mutable state is introduced | Code review — no shared mutable `static` state in new projects |
 | Nullable reference types remain satisfied | Build output contains zero nullable warnings in the newly implemented projects |
-| Manufacturing services can run without UI code | service tests instantiate dependencies directly without Avalonia or WinForms |
-| Manufacturing uses existing modern seams instead of reintroducing legacy coupling | calculators consume repositories, character snapshots, and market services from the modern projects |
+| New UI work does not reintroduce legacy coupling | ViewModels and shell composition consume repositories, settings, and domain services from the modern projects only |
+| New screens remain testable without UI-specific logic leaking into the domain layer | domain/service tests instantiate dependencies directly without Avalonia or WinForms |
 
 ---
 
 ## Suggested Work Order
 
-1. **Phase 10 next** — continue pulling assets and industry jobs into testable services so the Avalonia host consumes modern APIs instead of legacy code.
-2. **Phase 11 after that** — start the Avalonia host only once the remaining domain-heavy workflows have modern service seams.
+1. **Phase 11 next** — start the Avalonia host now that the remaining asset, industry-job, and datacore seams have modern service coverage.
+2. Wire the first read-only screens against the completed Phase 10 services before adding broader UI state or workflows.
 3. Add CI once the next domain slice is underway so future work is gated by automated builds and tests.
 
 ---
@@ -403,8 +438,6 @@ This phase establishes the shared price lookup layer needed by manufacturing, re
 
 ## Out of Scope for This Milestone
 
-- Avalonia UI work (Phase 11)
-- Reprocessing calculations (Phase 8)
-- Assets and industry jobs extraction (Phase 10)
+- Additional domain extraction beyond the completed Phase 10 baseline unless UI work exposes a concrete missing seam
 - Legacy project retirement work (Phase 12)
 - Loyalty Points domain extraction, which remains an additional legacy area to schedule after the current core domains

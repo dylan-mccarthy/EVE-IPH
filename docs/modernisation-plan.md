@@ -224,10 +224,12 @@ Current repo status: the deterministic Phase 8 reprocessing milestone is complet
 
 Projects: `EVE.IPH.Domain.ShoppingList`
 
-- [ ] Define `ShoppingListItem`, `MaterialList`, `AggregatedShoppingList` models
-- [ ] Implement `IShoppingListService`: add items, aggregate materials, apply build-vs-buy decisions, compute total cost
-- [ ] Implement serialisation of a shopping list to/from the SQLite repository
-- [ ] Write unit tests for material aggregation, deduplication, and cost rollup
+- Current repo status: Phase 9 is complete for the current milestone. The repo now contains shopping-list models, repository-backed load/save orchestration, material aggregation, duplicate merging, build-vs-buy projections, invention/copy/final-item list views, on-hand subtraction, and focused executable tests.
+
+- [x] Define `ShoppingListItem`, `MaterialList`, `AggregatedShoppingList` models
+- [x] Implement `IShoppingListService`: add items, aggregate materials, apply build-vs-buy decisions, compute total cost
+- [x] Implement serialisation of a shopping list to/from the SQLite repository
+- [x] Write unit tests for material aggregation, deduplication, and cost rollup
 
 **Output:** Shopping list logic is isolated and testable.
 
@@ -238,11 +240,16 @@ Projects: `EVE.IPH.Domain.ShoppingList`
 
 Projects: `EVE.IPH.Domain.Assets`, extended `EVE.IPH.Domain.Industry`
 
-- [ ] Define `Asset`, `AssetLocation` models; implement `IAssetService`
-- [ ] Define `IndustryJob`, `ResearchAgent`, `DatacoreAgent` models; implement `IIndustryJobService`
-- [ ] Write unit tests for asset grouping and industry job status queries
+- Current repo status: Phase 10 is complete for the current milestone. `Domain.Assets` now contains asset snapshot hydration, asset display formatting, tree projection, material-ancestor filtering, and non-UI asset-view filtering rules with focused tests. `Domain.Industry` now contains industry-job state classification, active-job summarization, character-scoped and corporation-scoped refresh/load orchestration, and presentation-row shaping with focused tests. The remaining datacore view logic has been lifted into the character domain as research-agent datacore valuation.
 
-**Output:** Assets and jobs are testable domain services.
+- [x] Extract the first deterministic industry-job state and summarization seams
+- [x] Extract the first deterministic asset display/tree/ancestor seams
+- [x] Add focused tests for those initial assets and industry services
+- [x] Introduce corporation-scoped industry-job refresh/orchestration that preserves legacy installer filtering and grouped persistence semantics
+- [x] Introduce repository-backed asset snapshot hydration and remaining non-UI asset-view filtering/grouping rules
+- [x] Fold remaining datacore/agent and industry-view shaping logic into the modern domain layer before starting meaningful Avalonia work
+
+**Output:** Assets, industry jobs, and datacore valuation are testable domain services with repository-backed workflows sufficient to support the first real Avalonia screens.
 
 ---
 
@@ -254,14 +261,15 @@ Projects: `EVE.IPH.UI.Avalonia`
 - [ ] Set up Avalonia 11 application project targeting `net8.0`
 - [ ] Configure the DI container wiring all domain services and infrastructure implementations
 - [ ] Implement the application shell: main window, tab navigation, status bar, progress indicators
-- [ ] Implement ViewModels (using `CommunityToolkit.Mvvm`) and Views (AXAML) for each functional area, migrating one tab at a time:
-  - Manufacturing tab (highest priority — core feature)
+- [ ] Implement the first read-only ViewModels and Views (using `CommunityToolkit.Mvvm`) for the already extracted Phase 10 surfaces:
+  - Assets viewer
+  - Industry jobs viewer
+  - Datacores / research agents tab
+- [ ] After the first read-only screens are stable, migrate the next feature areas one tab at a time:
+  - Manufacturing tab
   - Market prices / update tab
   - Mining / reprocessing tab
-  - Datacores / research agents tab
-  - Industry jobs viewer
   - Shopping list
-  - Assets viewer
   - Settings
   - Character / account management
   - Blueprint management
