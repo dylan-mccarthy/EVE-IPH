@@ -1,3 +1,4 @@
+using EVE.IPH.Domain.Core.Identifiers;
 using EVE.IPH.Domain.Core.Interfaces;
 using EVE.IPH.Domain.Core.Results;
 using EVE.IPH.Infrastructure.ESI.Interfaces;
@@ -18,9 +19,32 @@ public sealed class EsiTokenProvider(IEsiTokenStore tokenStore, IEsiSsoClient ss
     public async Task<Result<EsiAccessToken>> GetAccessTokenAsync(CancellationToken cancellationToken = default)
     {
         Maybe<EsiTokenRecord> tokenRecord = await _tokenStore.ReadAsync(cancellationToken).ConfigureAwait(false);
+        return await GetAccessTokenAsync(tokenRecord, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<Result<EsiAccessToken>> GetAccessTokenAsync(CharacterId characterId, CancellationToken cancellationToken = default)
+    {
+        Maybe<EsiTokenRecord> tokenRecord = await _tokenStore.ReadAsync(characterId, cancellationToken).ConfigureAwait(false);
+        return await GetAccessTokenAsync(tokenRecord, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<Result<EsiAccessToken>> RefreshAccessTokenAsync(CancellationToken cancellationToken = default)
+    {
+        Maybe<EsiTokenRecord> tokenRecord = await _tokenStore.ReadAsync(cancellationToken).ConfigureAwait(false);
+        return await RefreshAccessTokenAsync(tokenRecord, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<Result<EsiAccessToken>> RefreshAccessTokenAsync(CharacterId characterId, CancellationToken cancellationToken = default)
+    {
+        Maybe<EsiTokenRecord> tokenRecord = await _tokenStore.ReadAsync(characterId, cancellationToken).ConfigureAwait(false);
+        return await RefreshAccessTokenAsync(tokenRecord, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Result<EsiAccessToken>> GetAccessTokenAsync(Maybe<EsiTokenRecord> tokenRecord, CancellationToken cancellationToken)
+    {
         if (tokenRecord.HasNoValue)
         {
-            return Result<EsiAccessToken>.Failure("ESI_TOKEN_NOT_FOUND", "No ESI token is stored for the active account.");
+            return Result<EsiAccessToken>.Failure("ESI_TOKEN_NOT_FOUND", "No ESI token is stored for the requested character.");
         }
 
         EsiAccessToken token = EsiAccessToken.FromRecord(tokenRecord.Value);
@@ -29,17 +53,16 @@ public sealed class EsiTokenProvider(IEsiTokenStore tokenStore, IEsiSsoClient ss
             return Result<EsiAccessToken>.Success(token);
         }
 
-        return await RefreshAccessTokenAsync(cancellationToken).ConfigureAwait(false);
+        return await RefreshAccessTokenAsync(tokenRecord, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<Result<EsiAccessToken>> RefreshAccessTokenAsync(CancellationToken cancellationToken = default)
+    private Task<Result<EsiAccessToken>> RefreshAccessTokenAsync(Maybe<EsiTokenRecord> tokenRecord, CancellationToken cancellationToken)
     {
-        Maybe<EsiTokenRecord> tokenRecord = await _tokenStore.ReadAsync(cancellationToken).ConfigureAwait(false);
         if (tokenRecord.HasNoValue)
         {
-            return Result<EsiAccessToken>.Failure("ESI_REFRESH_NOT_POSSIBLE", "No refresh token is available for the active account.");
+            return Task.FromResult(Result<EsiAccessToken>.Failure("ESI_REFRESH_NOT_POSSIBLE", "No refresh token is available for the requested character."));
         }
 
-        return await _ssoClient.RefreshAccessTokenAsync(tokenRecord.Value.RefreshToken, cancellationToken).ConfigureAwait(false);
+        return _ssoClient.RefreshAccessTokenAsync(tokenRecord.Value.RefreshToken, cancellationToken);
     }
 }

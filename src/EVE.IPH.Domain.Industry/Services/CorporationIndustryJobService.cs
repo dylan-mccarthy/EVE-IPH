@@ -65,10 +65,15 @@ public sealed class CorporationIndustryJobService(
         }
 
         CharacterId[] installerIds = GetCorporationInstallerIds(characters.Value, corporationId);
+        if (installerIds.Length == 0)
+        {
+            return Result<CorporationIndustryJobSnapshot>.Success(new CorporationIndustryJobSnapshot(corporationId, [], new IndustryJobSummary(0, 0, 0, 0, 0, 0)));
+        }
+
         HashSet<long> installerIdSet = installerIds.Select(id => id.Value).ToHashSet();
 
         Result<IReadOnlyList<IndustryJobData>> currentJobs = await _industryJobDataSource
-            .GetCorporationJobsAsync(corporationId, cancellationToken)
+            .GetCorporationJobsAsync(corporationId, installerIds[0], cancellationToken)
             .ConfigureAwait(false);
 
         if (currentJobs.IsFailure)
@@ -113,7 +118,7 @@ public sealed class CorporationIndustryJobService(
         foreach ((CharacterId installerId, IReadOnlyList<IndustryJobRecord> installerJobs) in jobsByInstaller)
         {
             Result<IReadOnlyList<IndustryJobRecord>> replaceResult = await _industryJobRepository
-                .ReplaceAsync(installerId, installerJobs, cancellationToken)
+                .ReplaceAsync(installerId, IndustryJobScope.Corporation, installerJobs, cancellationToken)
                 .ConfigureAwait(false);
 
             if (replaceResult.IsFailure)

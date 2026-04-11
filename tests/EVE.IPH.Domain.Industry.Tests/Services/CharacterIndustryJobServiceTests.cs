@@ -50,8 +50,8 @@ public sealed class CharacterIndustryJobServiceTests
             .Returns(Result<IReadOnlyList<IndustryJobData>>.Success([
                 CreateData(characterId, 9, "active", Now.AddHours(-2), Now.AddHours(1)),
             ]));
-        repository.ReplaceAsync(Arg.Any<CharacterId>(), Arg.Any<IReadOnlyList<IndustryJobRecord>>(), Arg.Any<CancellationToken>())
-            .Returns(call => Result<IReadOnlyList<IndustryJobRecord>>.Success(call.Arg<IReadOnlyList<IndustryJobRecord>>()));
+        repository.ReplaceAsync(Arg.Any<CharacterId>(), Arg.Any<IndustryJobScope>(), Arg.Any<IReadOnlyList<IndustryJobRecord>>(), Arg.Any<CancellationToken>())
+            .Returns(call => Result<IReadOnlyList<IndustryJobRecord>>.Success(call.ArgAt<IReadOnlyList<IndustryJobRecord>>(2)));
 
         CharacterIndustryJobService service = new(repository, dataSource, summaryService, timeProvider);
 
@@ -63,6 +63,7 @@ public sealed class CharacterIndustryJobServiceTests
 
         await repository.Received(1).ReplaceAsync(
             Arg.Is<CharacterId>(id => id == characterId),
+            Arg.Is<IndustryJobScope>(scope => scope == IndustryJobScope.Personal),
             Arg.Is<IReadOnlyList<IndustryJobRecord>>(jobs => jobs.Count == 1 && jobs[0].ActivityId == 11 && jobs[0].InstallerId == characterId),
             Arg.Any<CancellationToken>());
     }
@@ -85,7 +86,7 @@ public sealed class CharacterIndustryJobServiceTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("industry.fetch.failed");
-        await repository.DidNotReceiveWithAnyArgs().ReplaceAsync(default, default!, default);
+        await repository.DidNotReceiveWithAnyArgs().ReplaceAsync(default, default, default!, default);
     }
 
     private static IndustryJobRecord CreateRecord(

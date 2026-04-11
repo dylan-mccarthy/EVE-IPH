@@ -26,44 +26,46 @@ public sealed class ResearchAgentsScreenService : IResearchAgentsScreenService
 
     public async Task<ResearchAgentsScreenData> GetScreenDataAsync(CancellationToken cancellationToken = default)
     {
-        if (_characterRepository is not null && _researchAgentService is not null)
+        if (_characterRepository is null || _researchAgentService is null)
         {
-            Result<IReadOnlyList<CharacterRecord>> characters = await _characterRepository
-                .GetAllAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            if (characters.IsSuccess)
-            {
-                CharacterRecord? selectedCharacter = characters.Value.FirstOrDefault(character => character.IsDefault)
-                    ?? characters.Value.FirstOrDefault();
-
-                if (selectedCharacter is not null)
-                {
-                    Result<IReadOnlyList<ResearchAgent>> researchAgents = await _researchAgentService
-                        .GetAsync(selectedCharacter.CharacterId, cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (researchAgents.IsSuccess)
-                    {
-                        return BuildScreenData(
-                            researchAgents.Value,
-                            $"Loaded research agents for {selectedCharacter.Name} from the existing SQLite database. Datacore prices remain seeded until the market path is wired.");
-                    }
-
-                    return BuildSampleScreenData($"Fell back to seeded research agents because stored data could not be loaded: {researchAgents.Error.Message}");
-                }
-
-                return BuildSampleScreenData("No stored characters were found in the SQLite database. Showing seeded research-agent data.");
-            }
-
-            return BuildSampleScreenData($"Fell back to seeded research agents because the character list could not be loaded: {characters.Error.Message}");
+            return BuildScreenData([], "Character-backed research-agent services are not available in the current host configuration.");
         }
 
-        return BuildSampleScreenData("Legacy SQLite database not found. Showing seeded research-agent data.");
-    }
+        Result<IReadOnlyList<CharacterRecord>> characters = await _characterRepository
+            .GetAllAsync(cancellationToken)
+            .ConfigureAwait(false);
 
-    private ResearchAgentsScreenData BuildSampleScreenData(string statusText) =>
-        BuildScreenData(_sampleDataProvider.GetResearchAgents(), statusText);
+        if (characters.IsFailure)
+        {
+            return BuildScreenData([], $"Unable to load stored characters for research agents: {characters.Error.Message}");
+        }
+
+        CharacterRecord? selectedCharacter = characters.Value.FirstOrDefault(character => character.IsDefault)
+            ?? characters.Value.FirstOrDefault();
+
+        if (selectedCharacter is null)
+        {
+            return BuildScreenData([], "No characters have been connected yet. Connect and sync a character to load current research agents.");
+        }
+
+        Result<IReadOnlyList<ResearchAgent>> researchAgents = await _researchAgentService
+            .GetAsync(selectedCharacter.CharacterId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (researchAgents.IsFailure)
+        {
+            return BuildScreenData([], $"Unable to load research agents for {selectedCharacter.Name}: {researchAgents.Error.Message}");
+        }
+
+        if (researchAgents.Value.Count == 0)
+        {
+            return BuildScreenData([], $"No synced research-agent records were found for {selectedCharacter.Name} yet. Refresh the character to pull current datacore progress from ESI.");
+        }
+
+        return BuildScreenData(
+            researchAgents.Value,
+            $"Loaded research agents for {selectedCharacter.Name} from the local SQLite store. Datacore prices remain seeded until the market path is wired.");
+    }
 
     private ResearchAgentsScreenData BuildScreenData(IReadOnlyList<ResearchAgent> researchAgents, string statusText) =>
         new(

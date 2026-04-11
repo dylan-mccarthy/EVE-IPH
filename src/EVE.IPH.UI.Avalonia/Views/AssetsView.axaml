@@ -2,20 +2,37 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="EVE.IPH.UI.Avalonia.Views.AssetsView">
   <Grid Margin="20" RowDefinitions="Auto,Auto,*" RowSpacing="12">
-    <StackPanel Orientation="Horizontal" Spacing="12">
-      <TextBox Width="260"
-               Watermark="Search assets or locations"
-               Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-      <CheckBox VerticalAlignment="Center"
-                Content="Blueprint copies only"
-                IsChecked="{Binding OnlyBlueprintCopies}" />
-      <ComboBox Width="140"
-                ItemsSource="{Binding SortModes}"
-                SelectedItem="{Binding SelectedSortMode}" />
+    <StackPanel Spacing="10">
+      <Button HorizontalAlignment="Left"
+              Content="Refresh Assets"
+              Click="RefreshAssets_Click"
+              IsEnabled="{Binding CanRefresh}" />
+
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <ComboBox Width="180"
+                  ItemsSource="{Binding OwnerOptions}"
+                  SelectedItem="{Binding SelectedOwner}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding DisplayName}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <TextBox Width="260"
+                 Watermark="Search assets or locations"
+                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+        <CheckBox VerticalAlignment="Center"
+                  Content="Blueprint copies only"
+                  IsChecked="{Binding OnlyBlueprintCopies}" />
+        <ComboBox Width="140"
+                  ItemsSource="{Binding SortModes}"
+                  SelectedItem="{Binding SelectedSortMode}" />
+      </StackPanel>
     </StackPanel>
 
     <TextBlock Grid.Row="1"
                Opacity="0.8"
+               TextWrapping="Wrap"
                Text="{Binding StatusText}" />
 
     <ListBox Grid.Row="2" ItemsSource="{Binding Items}">

@@ -6,14 +6,16 @@ namespace EVE.IPH.UI.Avalonia.ViewModels;
 
 public sealed class ResearchAgentsViewModel : ObservableObject
 {
+    private readonly IResearchAgentsScreenService _researchAgentsScreenService;
     private ResearchAgentDatacoreSummary _summary = new([], 0);
     private string _statusText = "Loading research agents...";
+    private bool _isRefreshing;
 
     public ResearchAgentsViewModel(IResearchAgentsScreenService researchAgentsScreenService)
     {
-        ArgumentNullException.ThrowIfNull(researchAgentsScreenService);
+        _researchAgentsScreenService = researchAgentsScreenService ?? throw new ArgumentNullException(nameof(researchAgentsScreenService));
 
-        LoadTask = LoadAsync(researchAgentsScreenService);
+        LoadTask = RefreshAsync();
     }
 
     public Task LoadTask { get; }
@@ -39,13 +41,34 @@ public sealed class ResearchAgentsViewModel : ObservableObject
         private set => SetProperty(ref _statusText, value);
     }
 
+    public bool IsRefreshing
+    {
+        get => _isRefreshing;
+        private set
+        {
+            if (SetProperty(ref _isRefreshing, value))
+            {
+                OnPropertyChanged(nameof(CanRefresh));
+            }
+        }
+    }
+
+    public bool CanRefresh => !IsRefreshing;
+
     public string SummaryText => $"{Summary.Agents.Count} active research agents | Estimated datacore value: {Summary.TotalValue:F2} ISK";
 
-    private async Task LoadAsync(IResearchAgentsScreenService researchAgentsScreenService)
+    public async Task RefreshAsync()
     {
+        if (IsRefreshing)
+        {
+            return;
+        }
+
         try
         {
-            ResearchAgentsScreenData screenData = await researchAgentsScreenService
+            IsRefreshing = true;
+
+            ResearchAgentsScreenData screenData = await _researchAgentsScreenService
                 .GetScreenDataAsync()
                 .ConfigureAwait(false);
 
@@ -55,6 +78,10 @@ public sealed class ResearchAgentsViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Unable to load research agents: {ex.Message}";
+        }
+        finally
+        {
+            IsRefreshing = false;
         }
     }
 }

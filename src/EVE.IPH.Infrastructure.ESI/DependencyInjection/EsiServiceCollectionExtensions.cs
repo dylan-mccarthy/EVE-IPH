@@ -36,8 +36,10 @@ public static class EsiServiceCollectionExtensions
         services.AddHttpClient<IEsiSsoClient, EsiSsoClient>(client => client.BaseAddress = ssoBaseAddress ?? DefaultSsoBaseAddress);
         services.AddTransient<IEsiTokenProvider, EsiTokenProvider>();
         services.AddTransient<IEsiInteractiveLoginService, EsiInteractiveLoginService>();
+        services.AddTransient<IAssetDataSource, EsiAssetDataSource>();
         services.AddTransient<ICharacterDataSource, EsiCharacterDataSource>();
         services.AddTransient<ICharacterResearchAgentDataSource, EsiCharacterResearchAgentDataSource>();
+        services.AddTransient<IIndustryJobDataSource, EsiIndustryJobDataSource>();
         services.AddTransient<IMarketPriceSourceResolver, MarketPriceSourceResolver>();
 
         services
@@ -53,7 +55,6 @@ public static class EsiServiceCollectionExtensions
 
         services
             .AddHttpClient<IEsiClient, EsiClient>(client => client.BaseAddress = baseAddress ?? DefaultBaseAddress)
-            .AddHttpMessageHandler<BearerTokenHandler>()
             .AddHttpMessageHandler<EsiResilienceHandler>();
 
         return services;

@@ -36,8 +36,21 @@ public sealed class InMemoryDbFixture : IDisposable
                 CHARACTER_ID   INTEGER NOT NULL,
                 CHARACTER_NAME TEXT    NOT NULL,
                 CORPORATION_ID INTEGER NOT NULL DEFAULT 0,
+                ALLIANCE_ID    INTEGER NULL,
                 IS_DEFAULT     INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY (CHARACTER_ID)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS ESI_CORPORATION_CONNECTIONS (
+                CORPORATION_ID          INTEGER NOT NULL,
+                CORPORATION_NAME        TEXT    NOT NULL,
+                AUTHORIZED_CHARACTER_ID INTEGER NOT NULL,
+                HAS_ASSET_ACCESS        INTEGER NOT NULL DEFAULT 0,
+                HAS_INDUSTRY_JOB_ACCESS INTEGER NOT NULL DEFAULT 0,
+                HAS_BLUEPRINT_ACCESS    INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (CORPORATION_ID)
             )
             """);
 
@@ -86,6 +99,60 @@ public sealed class InMemoryDbFixture : IDisposable
                 LEVEL      INTEGER NOT NULL DEFAULT 0,
                 STATION    TEXT    NOT NULL,
                 PRIMARY KEY (AGENT_ID)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS INDUSTRY_JOBS (
+                jobID                 INTEGER NOT NULL,
+                installerID           INTEGER NOT NULL,
+                facilityID            INTEGER NOT NULL DEFAULT 0,
+                locationID            INTEGER NOT NULL DEFAULT 0,
+                activityID            INTEGER NOT NULL DEFAULT 0,
+                blueprintID           INTEGER NOT NULL DEFAULT 0,
+                blueprintTypeID       INTEGER NOT NULL DEFAULT 0,
+                blueprintLocationID   INTEGER NOT NULL DEFAULT 0,
+                outputLocationID      INTEGER NOT NULL DEFAULT 0,
+                runs                  INTEGER NOT NULL DEFAULT 0,
+                cost                  REAL    NOT NULL DEFAULT 0,
+                licensedRuns          INTEGER NOT NULL DEFAULT 0,
+                probability           REAL    NOT NULL DEFAULT 0,
+                productTypeID         INTEGER NULL,
+                status                TEXT    NOT NULL DEFAULT '',
+                duration              INTEGER NOT NULL DEFAULT 0,
+                startDate             TEXT    NULL,
+                endDate               TEXT    NULL,
+                pauseDate             TEXT    NULL,
+                completedDate         TEXT    NULL,
+                completedCharacterID  INTEGER NULL,
+                successfulRuns        INTEGER NOT NULL DEFAULT 0,
+                JobType               INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (jobID, installerID, JobType)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS ASSETS (
+                ID          INTEGER NOT NULL,
+                ItemID      INTEGER NOT NULL,
+                LocationID  INTEGER NOT NULL DEFAULT 0,
+                TypeID      INTEGER NOT NULL,
+                Quantity    INTEGER NOT NULL DEFAULT 0,
+                Flag        INTEGER NOT NULL DEFAULT 0,
+                IsSingleton INTEGER NOT NULL DEFAULT 0,
+                IsBPCopy    INTEGER NOT NULL DEFAULT 0,
+                ItemName    TEXT    NOT NULL DEFAULT '',
+                PRIMARY KEY (ID, ItemID)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS INVENTORY_FLAGS (
+                FlagID     INTEGER NOT NULL,
+                FlagText   TEXT    NOT NULL,
+                container  INTEGER NOT NULL DEFAULT 0,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (FlagID)
             )
             """);
 
@@ -145,6 +212,52 @@ public sealed class InMemoryDbFixture : IDisposable
                 volume      REAL    NOT NULL DEFAULT 0,
                 portionSize INTEGER NOT NULL DEFAULT 1,
                 PRIMARY KEY (typeID)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS ITEM_LOOKUP (
+                typeID       INTEGER NOT NULL,
+                typeName     TEXT    NOT NULL,
+                groupName    TEXT    NOT NULL,
+                categoryName TEXT    NOT NULL,
+                PRIMARY KEY (typeID)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS REGIONS (
+                regionID   INTEGER NOT NULL,
+                regionName TEXT    NOT NULL,
+                PRIMARY KEY (regionID)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS SOLAR_SYSTEMS (
+                solarSystemID   INTEGER NOT NULL,
+                solarSystemName TEXT    NOT NULL,
+                regionID        INTEGER NOT NULL,
+                SECURITY        REAL    NOT NULL DEFAULT 0,
+                PRIMARY KEY (solarSystemID)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS STATIONS (
+                STATION_ID      INTEGER NOT NULL,
+                STATION_NAME    TEXT    NOT NULL,
+                SOLAR_SYSTEM_ID INTEGER NOT NULL,
+                regionID        INTEGER NOT NULL,
+                PRIMARY KEY (STATION_ID)
+            )
+            """);
+
+        _keeper.Execute("""
+            CREATE TABLE IF NOT EXISTS INDUSTRY_ACTIVITIES (
+                activityID   INTEGER NOT NULL,
+                activityName TEXT    NOT NULL,
+                PRIMARY KEY (activityID)
             )
             """);
 

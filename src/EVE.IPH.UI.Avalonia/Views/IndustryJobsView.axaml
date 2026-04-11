@@ -2,7 +2,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="EVE.IPH.UI.Avalonia.Views.IndustryJobsView">
   <Grid Margin="20" RowDefinitions="Auto,*" RowSpacing="12">
-    <TextBlock Opacity="0.8" Text="{Binding SummaryText}" />
+    <StackPanel Spacing="4">
+      <Button HorizontalAlignment="Left"
+              Content="Refresh Industry Jobs"
+              Click="RefreshIndustryJobs_Click"
+              IsEnabled="{Binding CanRefresh}" />
+      <TextBlock Opacity="0.8" Text="{Binding SummaryText}" TextWrapping="Wrap" />
+    </StackPanel>
 
     <ListBox Grid.Row="1" ItemsSource="{Binding Items}">
       <ListBox.ItemTemplate>

@@ -81,7 +81,16 @@ public sealed class BearerTokenHandlerTests
         public Task<Result<EsiAccessToken>> GetAccessTokenAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(accessTokenResult);
 
+        public Task<Result<EsiAccessToken>> GetAccessTokenAsync(CharacterId characterId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(accessTokenResult);
+
         public Task<Result<EsiAccessToken>> RefreshAccessTokenAsync(CancellationToken cancellationToken = default)
+        {
+            RefreshCallCount++;
+            return Task.FromResult(refreshTokenResult);
+        }
+
+        public Task<Result<EsiAccessToken>> RefreshAccessTokenAsync(CharacterId characterId, CancellationToken cancellationToken = default)
         {
             RefreshCallCount++;
             return Task.FromResult(refreshTokenResult);

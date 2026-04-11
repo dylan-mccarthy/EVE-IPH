@@ -67,13 +67,13 @@ public sealed class CorporationIndustryJobServiceTests
                 CreateCharacter(firstInstaller, corporationId),
                 CreateCharacter(secondInstaller, corporationId),
             ]));
-        industryJobDataSource.GetCorporationJobsAsync(corporationId, Arg.Any<CancellationToken>())
+        industryJobDataSource.GetCorporationJobsAsync(corporationId, firstInstaller, Arg.Any<CancellationToken>())
             .Returns(Result<IReadOnlyList<IndustryJobData>>.Success([
                 CreateData(firstInstaller, 9, "active", Now.AddHours(-2), Now.AddHours(1), IndustryJobScope.Corporation),
                 CreateData(new CharacterId(90000099), 1, "active", Now.AddHours(-1), Now.AddHours(3), IndustryJobScope.Corporation),
             ]));
-        industryJobRepository.ReplaceAsync(Arg.Any<CharacterId>(), Arg.Any<IReadOnlyList<IndustryJobRecord>>(), Arg.Any<CancellationToken>())
-            .Returns(call => Result<IReadOnlyList<IndustryJobRecord>>.Success(call.Arg<IReadOnlyList<IndustryJobRecord>>()));
+        industryJobRepository.ReplaceAsync(Arg.Any<CharacterId>(), Arg.Any<IndustryJobScope>(), Arg.Any<IReadOnlyList<IndustryJobRecord>>(), Arg.Any<CancellationToken>())
+            .Returns(call => Result<IReadOnlyList<IndustryJobRecord>>.Success(call.ArgAt<IReadOnlyList<IndustryJobRecord>>(2)));
 
         CorporationIndustryJobService service = new(characterRepository, industryJobRepository, industryJobDataSource, industryJobService, timeProvider);
 
@@ -86,10 +86,12 @@ public sealed class CorporationIndustryJobServiceTests
 
         await industryJobRepository.Received(1).ReplaceAsync(
             Arg.Is<CharacterId>(id => id == firstInstaller),
+            Arg.Is<IndustryJobScope>(scope => scope == IndustryJobScope.Corporation),
             Arg.Is<IReadOnlyList<IndustryJobRecord>>(jobs => jobs.Count == 1 && jobs[0].ActivityId == 11 && jobs[0].Scope == IndustryJobScope.Corporation),
             Arg.Any<CancellationToken>());
         await industryJobRepository.Received(1).ReplaceAsync(
             Arg.Is<CharacterId>(id => id == secondInstaller),
+            Arg.Is<IndustryJobScope>(scope => scope == IndustryJobScope.Corporation),
             Arg.Is<IReadOnlyList<IndustryJobRecord>>(jobs => jobs.Count == 0),
             Arg.Any<CancellationToken>());
     }
@@ -113,7 +115,7 @@ public sealed class CorporationIndustryJobServiceTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("characters.load.failed");
-        await industryJobDataSource.DidNotReceiveWithAnyArgs().GetCorporationJobsAsync(default, default);
+        await industryJobDataSource.DidNotReceiveWithAnyArgs().GetCorporationJobsAsync(default, default, default);
     }
 
     private static CharacterRecord CreateCharacter(CharacterId characterId, CorporationId corporationId)

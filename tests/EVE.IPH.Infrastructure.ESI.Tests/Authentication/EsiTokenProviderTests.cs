@@ -22,7 +22,7 @@ public sealed class EsiTokenProviderTests
         IEsiSsoClient ssoClient = Substitute.For<IEsiSsoClient>();
         EsiTokenProvider provider = new(tokenStore, ssoClient, TimeProvider.System);
 
-        var result = await provider.GetAccessTokenAsync();
+        var result = await provider.GetAccessTokenAsync(new CharacterId(1001));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.AccessToken.Should().Be("access-token");
@@ -50,7 +50,7 @@ public sealed class EsiTokenProviderTests
 
         EsiTokenProvider provider = new(tokenStore, ssoClient, TimeProvider.System);
 
-        var result = await provider.GetAccessTokenAsync();
+        var result = await provider.GetAccessTokenAsync(new CharacterId(1001));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.AccessToken.Should().Be("fresh-token");
@@ -67,7 +67,27 @@ public sealed class EsiTokenProviderTests
             return Task.FromResult(Result<bool>.Success(true));
         }
 
+        public Task<Result<bool>> ClearAsync(CharacterId characterId, CancellationToken cancellationToken = default)
+        {
+            if (_token.HasValue && _token.Value.CharacterId.HasValue && _token.Value.CharacterId.Value == characterId)
+            {
+                _token = Maybe<EsiTokenRecord>.None;
+            }
+
+            return Task.FromResult(Result<bool>.Success(true));
+        }
+
         public Task<Maybe<EsiTokenRecord>> ReadAsync(CancellationToken cancellationToken = default) => Task.FromResult(_token);
+
+        public Task<Maybe<EsiTokenRecord>> ReadAsync(CharacterId characterId, CancellationToken cancellationToken = default)
+        {
+            if (_token.HasValue && _token.Value.CharacterId.HasValue && _token.Value.CharacterId.Value == characterId)
+            {
+                return Task.FromResult(_token);
+            }
+
+            return Task.FromResult(Maybe<EsiTokenRecord>.None);
+        }
 
         public Task<Result<EsiTokenRecord>> WriteAsync(EsiTokenRecord token, CancellationToken cancellationToken = default)
         {

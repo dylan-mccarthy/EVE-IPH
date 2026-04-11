@@ -23,10 +23,30 @@
                    Text="{Binding Title}" />
         <TextBlock Opacity="0.8"
                    Text="{Binding Subtitle}" />
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <Button Content="Import Database File..."
+            Click="BrowseLegacyDatabaseImport_Click"
+            IsEnabled="{Binding CanBrowseLegacyDatabase}" />
+          <Button Content="{Binding LegacyImportButtonText}"
+            Click="ImportDetectedLegacyDatabase_Click"
+                  IsVisible="{Binding CanImportLegacyDatabase}" />
+          <Button Content="Restart Now"
+            Click="RestartApplication_Click"
+            IsVisible="{Binding RestartRequired}" />
+          <TextBlock VerticalAlignment="Center"
+                     Opacity="0.75"
+                     Text="{Binding LegacyImportSourcePath}" />
+        </StackPanel>
+        <TextBlock Opacity="0.75"
+                   TextWrapping="Wrap"
+                   Text="{Binding LegacyImportStatus}" />
       </StackPanel>
     </Border>
 
     <TabControl Grid.Row="1" Margin="0,20,0,0">
+      <TabItem Header="Characters">
+        <views:CharacterManagementView DataContext="{Binding CharacterManagement}" />
+      </TabItem>
       <TabItem Header="Assets">
         <views:AssetsView DataContext="{Binding Assets}" />
       </TabItem>
@@ -35,6 +55,75 @@
       </TabItem>
       <TabItem Header="Research Agents">
         <views:ResearchAgentsView DataContext="{Binding ResearchAgents}" />
+      </TabItem>
+      <TabItem Header="Settings">
+        <ScrollViewer>
+          <StackPanel Margin="0,8,0,0" Spacing="16">
+            <Border Padding="16"
+                    CornerRadius="12"
+                    Background="#101B2B"
+                    BorderBrush="#28415F"
+                    BorderThickness="1">
+              <StackPanel Spacing="8">
+                <TextBlock FontSize="18" FontWeight="SemiBold" Text="Application Database" />
+                <TextBlock Opacity="0.8" TextWrapping="Wrap" Text="{Binding SettingsStatusText}" />
+                <TextBlock FontWeight="SemiBold" Text="Active database path" />
+                <SelectableTextBlock Text="{Binding DatabasePath}" />
+                <TextBlock FontWeight="SemiBold" Text="Import status" />
+                <TextBlock TextWrapping="Wrap" Text="{Binding LegacyImportStatus}" />
+                <TextBlock Opacity="0.75" TextWrapping="Wrap" Text="{Binding LegacyImportSourcePath}" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <Button Content="Import Database File..."
+                          Click="BrowseLegacyDatabaseImport_Click"
+                          IsEnabled="{Binding CanBrowseLegacyDatabase}" />
+                  <Button Content="{Binding LegacyImportButtonText}"
+                          Click="ImportDetectedLegacyDatabase_Click"
+                          IsVisible="{Binding CanImportLegacyDatabase}" />
+                  <Button Content="Restart Now"
+                          Click="RestartApplication_Click"
+                          IsVisible="{Binding RestartRequired}" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <Border Padding="16"
+                    CornerRadius="12"
+                    Background="#101B2B"
+                    BorderBrush="#28415F"
+                    BorderThickness="1">
+              <StackPanel Spacing="8">
+                <TextBlock FontSize="18" FontWeight="SemiBold" Text="Static Data" />
+                <TextBlock Opacity="0.8" TextWrapping="Wrap" Text="The app now bootstraps its supported SDE snapshot from the official JSONL archive instead of depending on a legacy database for core lookup tables." />
+                <TextBlock FontWeight="SemiBold" Text="Supported SDE build" />
+                <SelectableTextBlock Text="{Binding SupportedStaticDataBuild}" />
+                <TextBlock FontWeight="SemiBold" Text="Imported SDE build" />
+                <SelectableTextBlock Text="{Binding ImportedStaticDataBuildText}" />
+                <TextBlock FontWeight="SemiBold" Text="Imported at" />
+                <SelectableTextBlock Text="{Binding StaticDataImportedAtText}" />
+                <TextBlock FontWeight="SemiBold" Text="Source archive" />
+                <SelectableTextBlock Text="{Binding StaticDataSourceUrl}" />
+              </StackPanel>
+            </Border>
+
+            <Border Padding="16"
+                    CornerRadius="12"
+                    Background="#101B2B"
+                    BorderBrush="#28415F"
+                    BorderThickness="1">
+              <StackPanel Spacing="8">
+                <TextBlock FontSize="18" FontWeight="SemiBold" Text="Startup and Updates" />
+                <TextBlock Opacity="0.8" TextWrapping="Wrap" Text="{Binding OnboardingStatusText}" />
+                <Button HorizontalAlignment="Left"
+                        Content="Show Onboarding Dialog"
+                        Click="ShowFirstRunOnboarding_Click" />
+                <TextBlock Opacity="0.8" TextWrapping="Wrap" Text="{Binding UpdateStatusText}" />
+                <Button HorizontalAlignment="Left"
+                        Content="Show Update Dialog"
+                        Click="ShowUpdatePlaceholder_Click" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
       </TabItem>
     </TabControl>
   </Grid>

@@ -272,27 +272,42 @@ Projects: `EVE.IPH.Domain.Assets`, extended `EVE.IPH.Domain.Industry`
 
 Projects: `EVE.IPH.UI.Avalonia`
 
-- Current repo status: Phase 11 has not started in implementation terms. `EVE.IPH.UI.Avalonia` currently exists as a project shell with references to the extracted modern libraries, but it does not yet contain a bootstrapped Avalonia app, composition root, window shell, views, or view-models.
+- Current repo status: Phase 11 is now underway. `EVE.IPH.UI.Avalonia` is a real Avalonia desktop host with desktop lifetime bootstrap, DI composition root, a shell window, reusable modal dialog infrastructure, first-run/update/import dialog seams, JSONL SDE bootstrap/version surfacing, and initial screens for assets, industry jobs, research agents/datacores, settings, and character/account management. The shell now supports multi-character onboarding, a generated local `All Skills V` placeholder, character-keyed token persistence, explicit corporation connections for corporation-scoped asset/job data, token-health surfacing in character management, and mixed-owner asset filtering across characters and corporations. A dedicated `EVE.IPH.UI.Avalonia.Tests` project now covers the first view-model and shell-seam tests for import, restart-required state, filtering, summary projection, character-management workflows, and async loading/error behavior.
 
-- [ ] Bootstrap the Avalonia host itself: add the `App`, `Program`, desktop lifetime wiring, theme/resources, and first main window so the project is a real runnable UI application rather than only a referenced project shell
-- [ ] Configure the DI container wiring the existing infrastructure implementations and Phase 5-10 domain services into the Avalonia composition root
-- [ ] Implement the application shell: main window, navigation structure, and simple status/loading surfaces that can host multiple feature views
-- [ ] Implement the first read-only MVVM slices (using `CommunityToolkit.Mvvm`) for the already extracted Phase 10 surfaces:
+- [x] Bootstrap the Avalonia host itself: add the `App`, `Program`, desktop lifetime wiring, theme/resources, and first main window so the project is a real runnable UI application rather than only a referenced project shell
+- [x] Configure the DI container wiring the existing infrastructure implementations and Phase 5-10 domain services into the Avalonia composition root
+- [x] Implement the application shell: main window, navigation structure, and simple status/loading surfaces that can host multiple feature views
+- [x] Implement the first read-only MVVM slices (using `CommunityToolkit.Mvvm`) for the already extracted Phase 10 surfaces:
   - Assets viewer
   - Industry jobs viewer
   - Datacores / research agents tab
-- [ ] Add focused view-model tests and seam validation for navigation, loading, filtering, empty states, and error handling in those first screens
+- [x] Add explicit legacy database import flow, restart prompt, and reusable modal shell-dialog infrastructure instead of implicitly adopting old database paths at startup
+- [x] Add focused view-model tests and seam validation for navigation, loading, filtering, empty states, and error handling in those first screens
+- [ ] Before expanding the UI further, harden the application seams the shell still depends on:
+  - Persist and validate corporation capabilities explicitly, not just scopes, so the modern host can enforce the legacy corporation model (`Director` for assets/blueprints, `Factory Manager` for jobs)
+  - Add the missing corporation-blueprint path end to end: ESI adapter, data-source/repository layer, persistence, refresh orchestration, and read models that can be consumed by manufacturing and blueprint-management UI
+  - Define a stable screen-facing application-service layer so future tabs bind to query/command services instead of accumulating repository- and workflow-specific wiring inside view-models
+  - Finish the manufacturing-input seams that are still UI-blocking, especially structure/facility persistence and the remaining editable blueprint ownership/workflow state needed before the manufacturing and Upwell structure tabs are rebuilt
+  - Add integration coverage for onboarding and delete cascades across characters, corporation connections, mixed-owner assets, token state, and the future corporation-blueprint flow
 - [ ] After the first read-only screens are stable, migrate the next feature areas one tab at a time:
+  - Blueprint management and corporation blueprint views
   - Manufacturing tab
+  - Upwell structure fitting / facility management
   - Market prices / update tab
-  - Mining / reprocessing tab
   - Shopping list
-  - Settings
-  - Character / account management
-  - Blueprint management
-  - Upwell structure fitting
+  - Mining / reprocessing tab
+  - Settings refinements beyond the current shell status surface
+  - Character / corporation management refinements beyond the current connect/refresh/default/remove workflow
 - [ ] Reassess whether a splash screen or explicit loading workflow is still justified once the first shell and read-only tabs are running
 - [ ] Reassess whether the legacy self-update flow should be reused, replaced, or deferred once packaging and release distribution are defined
+
+**Recommended next continuation order:**
+
+1. Treat the next tranche as foundation hardening rather than new UI breadth: finish explicit corporation capability persistence and role validation so corporation features match legacy intent before more tabs consume them.
+2. Build the missing corporation-blueprint slice end to end and unify personal/corporation blueprint ownership into a single modern model the shell can query.
+3. Extract the remaining manufacturing-input seams the next tabs depend on, especially structure/facility persistence and editable blueprint ownership workflows, so the manufacturing and Upwell screens are not forced to recreate legacy form behavior in view-models.
+4. Consolidate screen-facing application services around query/command boundaries and add integration coverage for character/corporation onboarding, refresh, delete, and mixed-owner projections.
+5. Only after those seams are stable, continue tab migration in this order: blueprint management, manufacturing, Upwell structures/facilities, market/update, shopping list, then mining/reprocessing and the remaining shell refinements.
 
 **Output:** The application has a real Avalonia shell backed by the modern service layer, with the first read-only screens proving that the extracted domains can power the new UI without legacy VB code.
 

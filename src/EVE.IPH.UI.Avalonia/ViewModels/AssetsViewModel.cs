@@ -8,27 +8,50 @@ namespace EVE.IPH.UI.Avalonia.ViewModels;
 public sealed class AssetsViewModel : ObservableObject
 {
     private readonly IAssetViewFilterService _assetViewFilterService;
-    private readonly IReadOnlyList<HydratedAsset> _allAssets;
+    private readonly IAssetsScreenService _assetsScreenService;
+    private IReadOnlyList<HydratedAsset> _allAssets = [];
     private IReadOnlyList<HydratedAsset> _items = [];
+    private IReadOnlyList<AssetOwnerFilterOption> _ownerOptions = [new AssetOwnerFilterOption(null, "All Owners")];
+    private AssetOwnerFilterOption? _selectedOwner = new(null, "All Owners");
     private string _searchText = string.Empty;
     private bool _onlyBlueprintCopies;
     private AssetSortMode _selectedSortMode = AssetSortMode.Name;
-    private string _statusText = string.Empty;
+    private string _baseStatusText = "Loading assets...";
+    private string _statusText = "Loading assets...";
+    private bool _isRefreshing;
 
     public AssetsViewModel(
         IAssetViewFilterService assetViewFilterService,
         IAssetsScreenService assetsScreenService)
     {
         _assetViewFilterService = assetViewFilterService ?? throw new ArgumentNullException(nameof(assetViewFilterService));
-        ArgumentNullException.ThrowIfNull(assetsScreenService);
-
-        _allAssets = assetsScreenService.GetHydratedAssets();
+        _assetsScreenService = assetsScreenService ?? throw new ArgumentNullException(nameof(assetsScreenService));
 
         SortModes = Enum.GetValues<AssetSortMode>();
-        Refresh();
+        LoadTask = LoadAsync();
     }
 
+    public Task LoadTask { get; }
+
     public IReadOnlyList<AssetSortMode> SortModes { get; }
+
+    public IReadOnlyList<AssetOwnerFilterOption> OwnerOptions
+    {
+        get => _ownerOptions;
+        private set => SetProperty(ref _ownerOptions, value);
+    }
+
+    public AssetOwnerFilterOption? SelectedOwner
+    {
+        get => _selectedOwner;
+        set
+        {
+            if (SetProperty(ref _selectedOwner, value))
+            {
+                ApplyFilters();
+            }
+        }
+    }
 
     public string SearchText
     {
@@ -37,7 +60,7 @@ public sealed class AssetsViewModel : ObservableObject
         {
             if (SetProperty(ref _searchText, value))
             {
-                Refresh();
+                ApplyFilters();
             }
         }
     }
@@ -49,7 +72,7 @@ public sealed class AssetsViewModel : ObservableObject
         {
             if (SetProperty(ref _onlyBlueprintCopies, value))
             {
-                Refresh();
+                ApplyFilters();
             }
         }
     }
@@ -61,7 +84,7 @@ public sealed class AssetsViewModel : ObservableObject
         {
             if (SetProperty(ref _selectedSortMode, value))
             {
-                Refresh();
+                ApplyFilters();
             }
         }
     }
@@ -78,16 +101,101 @@ public sealed class AssetsViewModel : ObservableObject
         private set => SetProperty(ref _statusText, value);
     }
 
-    private void Refresh()
+    public bool IsRefreshing
+    {
+        get => _isRefreshing;
+        private set
+        {
+            if (SetProperty(ref _isRefreshing, value))
+            {
+                OnPropertyChanged(nameof(CanRefresh));
+            }
+        }
+    }
+
+    public bool CanRefresh => !IsRefreshing;
+
+    public async Task RefreshAsync()
+    {
+        if (IsRefreshing)
+        {
+            return;
+        }
+
+        try
+        {
+            IsRefreshing = true;
+            AssetsScreenData screenData = await _assetsScreenService.RefreshAsync().ConfigureAwait(false);
+            ApplyScreenData(screenData);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Unable to refresh assets: {ex.Message}";
+        }
+        finally
+        {
+            IsRefreshing = false;
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            IsRefreshing = true;
+            AssetsScreenData screenData = await _assetsScreenService.GetScreenDataAsync().ConfigureAwait(false);
+            ApplyScreenData(screenData);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Unable to load assets: {ex.Message}";
+        }
+        finally
+        {
+            IsRefreshing = false;
+        }
+    }
+
+    private void ApplyScreenData(AssetsScreenData screenData)
+    {
+        _allAssets = screenData.Assets;
+        AssetOwnerFilterOption? previouslySelectedOwner = SelectedOwner;
+
+        OwnerOptions = screenData.OwnerOptions.Count == 0
+            ? [new AssetOwnerFilterOption(null, "All Owners")]
+            : screenData.OwnerOptions;
+
+        SelectedOwner = previouslySelectedOwner is not null
+            ? OwnerOptions.FirstOrDefault(option => option.OwnerId == previouslySelectedOwner.OwnerId)
+            : OwnerOptions.FirstOrDefault();
+
+        if (SelectedOwner is null)
+        {
+            SelectedOwner = new AssetOwnerFilterOption(null, "All Owners");
+        }
+
+        _baseStatusText = screenData.StatusText;
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
     {
         AssetViewRequest request = new(
-            OwnerIds: new HashSet<long>(),
+            OwnerIds: SelectedOwner?.OwnerId is long ownerId ? new HashSet<long> { ownerId } : new HashSet<long>(),
             TypeIds: new HashSet<long>(),
             SearchText: SearchText,
             OnlyBlueprintCopies: OnlyBlueprintCopies,
             SortMode: SelectedSortMode);
 
         Items = _assetViewFilterService.Filter(_allAssets, request);
-        StatusText = $"Showing {Items.Count} of {_allAssets.Count} hydrated assets using the extracted Phase 10 filters.";
+
+        if (_allAssets.Count == 0)
+        {
+            StatusText = _baseStatusText;
+            return;
+        }
+
+        string ownerScope = SelectedOwner?.OwnerId is long ? $" for {SelectedOwner.DisplayName}" : string.Empty;
+        StatusText = $"{_baseStatusText} Showing {Items.Count} of {_allAssets.Count} hydrated assets{ownerScope}.";
     }
 }

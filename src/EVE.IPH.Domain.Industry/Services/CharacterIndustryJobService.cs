@@ -73,7 +73,7 @@ public sealed class CharacterIndustryJobService(
             .ToArray();
 
         Result<IReadOnlyList<IndustryJobRecord>> storedJobs = await _industryJobRepository
-            .ReplaceAsync(characterId, normalizedJobs, cancellationToken)
+            .ReplaceAsync(characterId, IndustryJobScope.Personal, normalizedJobs, cancellationToken)
             .ConfigureAwait(false);
 
         if (storedJobs.IsFailure)

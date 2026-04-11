@@ -25,5 +25,6 @@
     <Project Path="tests/EVE.IPH.Infrastructure.Data.Integration.Tests/EVE.IPH.Infrastructure.Data.Integration.Tests.csproj" />
     <Project Path="tests/EVE.IPH.Infrastructure.ESI.Tests/EVE.IPH.Infrastructure.ESI.Tests.csproj" />
     <Project Path="tests/EVE.IPH.Infrastructure.Settings.Tests/EVE.IPH.Infrastructure.Settings.Tests.csproj" />
+    <Project Path="tests/EVE.IPH.UI.Avalonia.Tests/EVE.IPH.UI.Avalonia.Tests.csproj" />
   </Folder>
 </Solution>

@@ -22,7 +22,7 @@ public sealed class SqliteCharacterRepository : ICharacterRepository
         try
         {
             using System.Data.IDbConnection connection = _connectionFactory.CreateConnection();
-            const string sql = "SELECT CHARACTER_ID, CHARACTER_NAME, CORPORATION_ID, IS_DEFAULT FROM ESI_CHARACTER_DATA ORDER BY CHARACTER_NAME";
+            const string sql = "SELECT CHARACTER_ID, CHARACTER_NAME, CORPORATION_ID, ALLIANCE_ID, IS_DEFAULT FROM ESI_CHARACTER_DATA ORDER BY CHARACTER_NAME";
 
             IEnumerable<CharacterDto> rows = await connection.QueryAsync<CharacterDto>(
                 new CommandDefinition(sql, cancellationToken: cancellationToken))
@@ -42,7 +42,7 @@ public sealed class SqliteCharacterRepository : ICharacterRepository
         try
         {
             using System.Data.IDbConnection connection = _connectionFactory.CreateConnection();
-            const string sql = "SELECT CHARACTER_ID, CHARACTER_NAME, CORPORATION_ID, IS_DEFAULT FROM ESI_CHARACTER_DATA WHERE CHARACTER_ID = @CharacterId";
+            const string sql = "SELECT CHARACTER_ID, CHARACTER_NAME, CORPORATION_ID, ALLIANCE_ID, IS_DEFAULT FROM ESI_CHARACTER_DATA WHERE CHARACTER_ID = @CharacterId";
 
             CharacterDto? row = await connection.QueryFirstOrDefaultAsync<CharacterDto>(
                 new CommandDefinition(sql, new { CharacterId = characterId.Value }, cancellationToken: cancellationToken))
@@ -62,11 +62,12 @@ public sealed class SqliteCharacterRepository : ICharacterRepository
         {
             using System.Data.IDbConnection connection = _connectionFactory.CreateConnection();
             const string sql = """
-                INSERT INTO ESI_CHARACTER_DATA (CHARACTER_ID, CHARACTER_NAME, CORPORATION_ID, IS_DEFAULT)
-                VALUES (@CharacterId, @CharacterName, @CorporationId, @IsDefault)
+                INSERT INTO ESI_CHARACTER_DATA (CHARACTER_ID, CHARACTER_NAME, CORPORATION_ID, ALLIANCE_ID, IS_DEFAULT)
+                VALUES (@CharacterId, @CharacterName, @CorporationId, @AllianceId, @IsDefault)
                 ON CONFLICT(CHARACTER_ID) DO UPDATE SET
                     CHARACTER_NAME = excluded.CHARACTER_NAME,
                     CORPORATION_ID = excluded.CORPORATION_ID,
+                    ALLIANCE_ID = excluded.ALLIANCE_ID,
                     IS_DEFAULT = excluded.IS_DEFAULT
                 """;
 
@@ -78,6 +79,7 @@ public sealed class SqliteCharacterRepository : ICharacterRepository
                         CharacterId = character.CharacterId.Value,
                         CharacterName = character.Name,
                         CorporationId = character.CorporationId.Value,
+                        AllianceId = character.AllianceId.HasValue ? (long?)character.AllianceId.Value.Value : null,
                         IsDefault = character.IsDefault ? 1 : 0,
                     },
                     cancellationToken: cancellationToken))
@@ -96,11 +98,45 @@ public sealed class SqliteCharacterRepository : ICharacterRepository
         try
         {
             using System.Data.IDbConnection connection = _connectionFactory.CreateConnection();
-            const string sql = "DELETE FROM ESI_CHARACTER_DATA WHERE CHARACTER_ID = @CharacterId";
+            connection.Open();
+            using System.Data.IDbTransaction transaction = connection.BeginTransaction();
 
             int affected = await connection.ExecuteAsync(
-                new CommandDefinition(sql, new { CharacterId = characterId.Value }, cancellationToken: cancellationToken))
-                .ConfigureAwait(false);
+                new CommandDefinition(
+                    "DELETE FROM CURRENT_RESEARCH_AGENTS WHERE CHARACTER_ID = @CharacterId",
+                    new { CharacterId = characterId.Value },
+                    transaction,
+                    cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+            await connection.ExecuteAsync(
+                new CommandDefinition(
+                    "DELETE FROM CHARACTER_STANDINGS WHERE CHARACTER_ID = @CharacterId",
+                    new { CharacterId = characterId.Value },
+                    transaction,
+                    cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+            await connection.ExecuteAsync(
+                new CommandDefinition(
+                    "DELETE FROM CHARACTER_SKILLS WHERE CHARACTER_ID = @CharacterId",
+                    new { CharacterId = characterId.Value },
+                    transaction,
+                    cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+            await connection.ExecuteAsync(
+                new CommandDefinition(
+                    "DELETE FROM ESI_CORPORATION_CONNECTIONS WHERE AUTHORIZED_CHARACTER_ID = @CharacterId",
+                    new { CharacterId = characterId.Value },
+                    transaction,
+                    cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+            affected = await connection.ExecuteAsync(
+                new CommandDefinition(
+                    "DELETE FROM ESI_CHARACTER_DATA WHERE CHARACTER_ID = @CharacterId",
+                    new { CharacterId = characterId.Value },
+                    transaction,
+                    cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+            transaction.Commit();
 
             return Result<bool>.Success(affected > 0);
         }
@@ -114,7 +150,7 @@ public sealed class SqliteCharacterRepository : ICharacterRepository
         new CharacterId(row.CHARACTER_ID),
         row.CHARACTER_NAME,
         new CorporationId(row.CORPORATION_ID),
-        Maybe<AllianceId>.None,
+        row.ALLIANCE_ID.HasValue ? Maybe<AllianceId>.Some(new AllianceId(row.ALLIANCE_ID.Value)) : Maybe<AllianceId>.None,
         row.IS_DEFAULT == 1);
 
     private sealed class CharacterDto
@@ -122,6 +158,7 @@ public sealed class SqliteCharacterRepository : ICharacterRepository
         public long CHARACTER_ID { get; init; }
         public string CHARACTER_NAME { get; init; } = string.Empty;
         public long CORPORATION_ID { get; init; }
+        public long? ALLIANCE_ID { get; init; }
         public int IS_DEFAULT { get; init; }
     }
 }

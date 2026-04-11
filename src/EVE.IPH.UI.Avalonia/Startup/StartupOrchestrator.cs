@@ -1,5 +1,6 @@
 using EVE.IPH.Infrastructure.Data.Connections;
 using EVE.IPH.Infrastructure.Data.Migrations;
+using EVE.IPH.Infrastructure.Settings;
 using EVE.IPH.Infrastructure.Settings.Storage;
 
 namespace EVE.IPH.UI.Avalonia.Startup;
@@ -10,6 +11,7 @@ namespace EVE.IPH.UI.Avalonia.Startup;
 ///   <item>Ensures the user's app-data directory exists.</item>
 ///   <item>Opens the SQLite database (creating it on first run).</item>
 ///   <item>Runs any pending schema migrations.</item>
+///   <item>Ensures the configured core static-data snapshot has been imported from the JSONL SDE archive.</item>
 /// </list>
 /// </summary>
 internal static class StartupOrchestrator
@@ -24,14 +26,21 @@ internal static class StartupOrchestrator
         string dbPath = AppDatabasePath.GetCanonicalDatabasePath();
         string dbDirectory = Path.GetDirectoryName(dbPath)
             ?? throw new InvalidOperationException($"Cannot determine directory for database path '{dbPath}'.");
+        string settingsDirectory = PlatformStoragePath.GetSettingsDirectory();
 
         Directory.CreateDirectory(dbDirectory);
+        Directory.CreateDirectory(settingsDirectory);
 
         // SQLite creates the file on first connection; the migration runner then applies
         // all pending scripts (including the initial schema) idempotently.
         IDbConnectionFactory connectionFactory = new SqliteConnectionFactory($"Data Source={dbPath}");
         SqliteMigrationRunner migrationRunner = new(connectionFactory);
+        JsonSettingsStore settingsStore = new(settingsDirectory);
+        StaticDataBootstrapper staticDataBootstrapper = new(settingsStore, connectionFactory, new HttpClient());
+        DummyCharacterBootstrapper dummyCharacterBootstrapper = new(connectionFactory);
 
         await migrationRunner.RunAsync(cancellationToken).ConfigureAwait(false);
+        await staticDataBootstrapper.EnsureStaticDataAsync(cancellationToken).ConfigureAwait(false);
+        await dummyCharacterBootstrapper.EnsureDummyCharacterAsync(cancellationToken).ConfigureAwait(false);
     }
 }

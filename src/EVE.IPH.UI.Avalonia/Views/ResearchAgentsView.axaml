@@ -3,6 +3,10 @@
              x:Class="EVE.IPH.UI.Avalonia.Views.ResearchAgentsView">
   <Grid Margin="20" RowDefinitions="Auto,*" RowSpacing="12">
     <StackPanel Spacing="4">
+      <Button HorizontalAlignment="Left"
+              Content="Refresh Research Agents"
+              Click="RefreshResearchAgents_Click"
+              IsEnabled="{Binding CanRefresh}" />
       <TextBlock Opacity="0.8" Text="{Binding SummaryText}" />
       <TextBlock Opacity="0.65" Text="{Binding StatusText}" TextWrapping="Wrap" />
     </StackPanel>

@@ -14,6 +14,7 @@ public interface IIndustryJobDataSource
 
     Task<Result<IReadOnlyList<IndustryJobData>>> GetCorporationJobsAsync(
         CorporationId corporationId,
+        CharacterId authenticatedCharacterId,
         CancellationToken cancellationToken = default);
 }
 

@@ -111,7 +111,27 @@ public sealed class EsiSsoClientTests
             return Task.FromResult(Result<bool>.Success(true));
         }
 
+        public Task<Result<bool>> ClearAsync(CharacterId characterId, CancellationToken cancellationToken = default)
+        {
+            if (StoredToken.HasValue && StoredToken.Value.CharacterId.HasValue && StoredToken.Value.CharacterId.Value == characterId)
+            {
+                StoredToken = Maybe<EsiTokenRecord>.None;
+            }
+
+            return Task.FromResult(Result<bool>.Success(true));
+        }
+
         public Task<Maybe<EsiTokenRecord>> ReadAsync(CancellationToken cancellationToken = default) => Task.FromResult(StoredToken);
+
+        public Task<Maybe<EsiTokenRecord>> ReadAsync(CharacterId characterId, CancellationToken cancellationToken = default)
+        {
+            if (StoredToken.HasValue && StoredToken.Value.CharacterId.HasValue && StoredToken.Value.CharacterId.Value == characterId)
+            {
+                return Task.FromResult(StoredToken);
+            }
+
+            return Task.FromResult(Maybe<EsiTokenRecord>.None);
+        }
 
         public Task<Result<EsiTokenRecord>> WriteAsync(EsiTokenRecord token, CancellationToken cancellationToken = default)
         {

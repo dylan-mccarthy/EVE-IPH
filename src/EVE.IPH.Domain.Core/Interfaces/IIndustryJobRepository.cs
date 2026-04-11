@@ -14,6 +14,7 @@ public interface IIndustryJobRepository
 
     Task<Result<IReadOnlyList<IndustryJobRecord>>> ReplaceAsync(
         CharacterId installerId,
+        IndustryJobScope scope,
         IReadOnlyList<IndustryJobRecord> jobs,
         CancellationToken cancellationToken = default);
 }
