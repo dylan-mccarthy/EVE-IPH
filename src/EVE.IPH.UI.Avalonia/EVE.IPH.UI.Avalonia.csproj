@@ -1,5 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.2" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.2" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\EVE.IPH.Domain.Core\EVE.IPH.Domain.Core.csproj" />
     <ProjectReference Include="..\EVE.IPH.Domain.Characters\EVE.IPH.Domain.Characters.csproj" />
@@ -13,11 +28,5 @@
     <ProjectReference Include="..\EVE.IPH.Infrastructure.Data\EVE.IPH.Infrastructure.Data.csproj" />
     <ProjectReference Include="..\EVE.IPH.Infrastructure.Settings\EVE.IPH.Infrastructure.Settings.csproj" />
   </ItemGroup>
-
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
 
 </Project>

@@ -59,6 +59,7 @@ The current repository state matches the intended Phase 1–6 extraction goals c
 
 **Current baseline for the milestone:**
 
+- `EVE.IPH.UI.Avalonia` currently contains project references only; it does not yet have `App`, `Program`, window, view, or view-model code.
 - `Domain.Industry` now covers state classification, current-job summarization, character refresh/load orchestration, corporation refresh/load orchestration, and stable presentation-row shaping for the legacy industry jobs viewer.
 - `Domain.Assets` now covers snapshot hydration, deterministic display-formatting, tree projection, ancestor-chain filtering, and pure asset-view filtering over owner scope, item subsets, search text, and sort order.
 - `Domain.Characters` now includes datacore valuation shaping on top of the existing research-agent model.
@@ -66,14 +67,16 @@ The current repository state matches the intended Phase 1–6 extraction goals c
 
 **Concrete Phase 11 plan:**
 
-1. **Avalonia composition root:** register the modern repositories, infrastructure adapters, and Phase 5-10 domain services in the Avalonia host and prove startup without legacy forms.
-2. **First read-only screens:** wire assets, industry jobs, and research-agent/datacore views against the new domain services so the UI consumes modern APIs instead of VB logic.
-3. **Navigation and shell state:** add the first real window, navigation structure, and loading/error state handling.
-4. **Incremental screen replacement:** move the next highest-value tabs over one at a time while keeping the legacy application available as the fallback reference.
+1. **Bootstrap the host:** turn `EVE.IPH.UI.Avalonia` into a real Avalonia app by adding the `App`, `Program`, desktop lifetime bootstrap, theme/resources, and the first main window shell.
+2. **Add the composition root:** register the existing infrastructure implementations and Phase 5-10 domain services, and define the first UI-facing service/adaptor seams needed to shape data for Avalonia without pushing UI concerns back into the domains.
+3. **Build the shell:** add navigation, a simple status/loading surface, and a stable layout that can host multiple feature views without reworking the window structure for each new screen.
+4. **Land the first read-only screens:** implement Assets, Industry Jobs, and Research Agents/Datacores as the first three MVVM slices, because those domains are now complete enough to validate the shell without reopening core business logic.
+5. **Add thin validation around the UI seam:** keep domain logic covered by existing tests, and add focused view-model tests for navigation, loading, filtering inputs, and error/empty states.
+6. **Only then expand scope:** once those three screens are running end-to-end against modern services, migrate the next highest-value tabs incrementally instead of trying to stand up the entire legacy UI in one pass.
 
-**Primary files to study next:** `App.axaml.cs`, the Avalonia shell project, and the newly completed Phase 10 domain services before reaching back into legacy view code.
+**Primary files to study next:** the Avalonia shell project itself as the bootstrap target, plus the completed Phase 10 asset, industry, and datacore services that should drive the first read-only screens.
 
-**Definition of ready to continue Phase 11:** the Avalonia host can render the first feature-backed screens using only modern services, and legacy VB files are no longer required to power those views.
+**Definition of done for the first Phase 11 slice:** the Avalonia host starts successfully, resolves dependencies through the modern composition root, renders the three initial read-only screens, and those screens obtain their data only through the modern services rather than any legacy VB logic.
 
 ---
 

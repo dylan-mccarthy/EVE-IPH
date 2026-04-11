@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="EVE.IPH.UI.Avalonia.Views.ResearchAgentsView">
+  <Grid Margin="20" RowDefinitions="Auto,*" RowSpacing="12">
+    <StackPanel Spacing="4">
+      <TextBlock Opacity="0.8" Text="{Binding SummaryText}" />
+      <TextBlock Opacity="0.65" Text="{Binding StatusText}" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <ListBox Grid.Row="1" ItemsSource="{Binding Agents}">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <Border Margin="0,0,0,8"
+                  Padding="12"
+                  CornerRadius="10"
+                  Background="#16263B"
+                  BorderBrush="#28415F"
+                  BorderThickness="1">
+            <Grid ColumnDefinitions="3*,2*,Auto" ColumnSpacing="16">
+              <StackPanel>
+                <TextBlock FontWeight="SemiBold" Text="{Binding AgentName}" />
+                <TextBlock Opacity="0.75" Text="{Binding DatacoreName}" />
+              </StackPanel>
+
+              <StackPanel Grid.Column="1">
+                <TextBlock Text="{Binding Location}" />
+                <TextBlock Opacity="0.75" Text="{Binding PointsPerDay}" />
+              </StackPanel>
+
+              <StackPanel Grid.Column="2" HorizontalAlignment="Right">
+                <TextBlock HorizontalAlignment="Right" Text="{Binding CurrentDatacores}" />
+                <TextBlock HorizontalAlignment="Right" Opacity="0.75" Text="{Binding CurrentValue, StringFormat=F2}" />
+              </StackPanel>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </Grid>
+</UserControl>

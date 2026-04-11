@@ -272,13 +272,16 @@ Projects: `EVE.IPH.Domain.Assets`, extended `EVE.IPH.Domain.Industry`
 
 Projects: `EVE.IPH.UI.Avalonia`
 
-- [ ] Set up Avalonia 11 application project targeting `net8.0`
-- [ ] Configure the DI container wiring all domain services and infrastructure implementations
-- [ ] Implement the application shell: main window, tab navigation, status bar, progress indicators
-- [ ] Implement the first read-only ViewModels and Views (using `CommunityToolkit.Mvvm`) for the already extracted Phase 10 surfaces:
+- Current repo status: Phase 11 has not started in implementation terms. `EVE.IPH.UI.Avalonia` currently exists as a project shell with references to the extracted modern libraries, but it does not yet contain a bootstrapped Avalonia app, composition root, window shell, views, or view-models.
+
+- [ ] Bootstrap the Avalonia host itself: add the `App`, `Program`, desktop lifetime wiring, theme/resources, and first main window so the project is a real runnable UI application rather than only a referenced project shell
+- [ ] Configure the DI container wiring the existing infrastructure implementations and Phase 5-10 domain services into the Avalonia composition root
+- [ ] Implement the application shell: main window, navigation structure, and simple status/loading surfaces that can host multiple feature views
+- [ ] Implement the first read-only MVVM slices (using `CommunityToolkit.Mvvm`) for the already extracted Phase 10 surfaces:
   - Assets viewer
   - Industry jobs viewer
   - Datacores / research agents tab
+- [ ] Add focused view-model tests and seam validation for navigation, loading, filtering, empty states, and error handling in those first screens
 - [ ] After the first read-only screens are stable, migrate the next feature areas one tab at a time:
   - Manufacturing tab
   - Market prices / update tab
@@ -288,10 +291,10 @@ Projects: `EVE.IPH.UI.Avalonia`
   - Character / account management
   - Blueprint management
   - Upwell structure fitting
-- [ ] Implement the splash screen and loading sequence
-- [ ] Implement the self-update check (can re-use `ProgramUpdater` logic initially)
+- [ ] Reassess whether a splash screen or explicit loading workflow is still justified once the first shell and read-only tabs are running
+- [ ] Reassess whether the legacy self-update flow should be reused, replaced, or deferred once packaging and release distribution are defined
 
-**Output:** The application runs natively on Windows, macOS, and Linux with full feature parity to the legacy WinForms app.
+**Output:** The application has a real Avalonia shell backed by the modern service layer, with the first read-only screens proving that the extracted domains can power the new UI without legacy VB code.
 
 ---
 
