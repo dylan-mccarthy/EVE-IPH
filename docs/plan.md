@@ -2,160 +2,151 @@
 
 ## Current State (as of April 2026)
 
-Phase 0 (Groundwork) is **complete**. The solution skeleton `EVE-IPH-Modern.sln` exists with all twelve projects scaffolded and `Directory.Build.props` in place. No C# implementation files have been written yet — every project is an empty shell.
+The repository has moved beyond the initial scaffold. The modern solution exists, builds, and includes implemented C# code plus passing tests for the shared foundation layers.
 
-The latest master changes have been merged in. Notable additions from master include:
-- `EVELoyaltyPoints.vb` (new LP-store domain area)
-- Significant refactoring of `ManufacturingFacility.vb` (~5,200 lines), `frmMain.vb` (~21,800 lines), `ShoppingList.vb`, and `frmConversiontoOreSettings.vb`
-- Removal of `frmManualPriceUpdate` (replaced by in-line market history refresh)
-- Updated ESI scopes in `ESI.vb`
+**Completed or substantially complete:**
 
----
+- **Phase 0 — Groundwork:** `EVE-IPH-Modern.slnx`, all planned `src/` and `tests/` projects, `Directory.Build.props`, and `.editorconfig` are present.
+- **Phase 1 — Domain.Core:** identifier value objects, `Result<T>`, `Maybe<T>`, `Error`, core enumerations, and repository/settings interfaces are implemented.
+- **Phase 2 — Infrastructure.Data:** SQLite connection factory, migration runner, and repository implementations for SDE/app data access are implemented.
+- **Phase 3 — Infrastructure.Settings:** JSON settings store, platform-specific storage path handling, and XML-to-JSON migration support are implemented.
+- **Phase 4 — Infrastructure.ESI:** typed ESI HTTP client, retry/error-limit handling, PKCE authorization request generation, token exchange/refresh, interactive localhost callback flow, and file-based token persistence are implemented.
 
-## Next Milestone: Foundation Phases (Phases 1 → 3)
+**Verified state:**
 
-**Goal:** Deliver a fully tested, dependency-injected foundation — shared types, data access, and settings — that every subsequent phase will build on. No UI work yet; only libraries and tests.
+- `dotnet test .\\EVE-IPH-Modern.slnx --configuration Release` passes.
+- The current test suite contains **132 passing tests**, including focused coverage for `Infrastructure.ESI`.
 
----
+**Not yet implemented in a meaningful way:**
 
-### Phase 1 — `EVE.IPH.Domain.Core` (Shared Types & Interfaces)
+- `EVE.IPH.Domain.Characters`
+- `EVE.IPH.Domain.Market`
+- `EVE.IPH.Domain.Manufacturing`
+- `EVE.IPH.Domain.Reprocessing`
+- `EVE.IPH.Domain.ShoppingList`
+- `EVE.IPH.Domain.Assets`
+- `EVE.IPH.Domain.Industry`
+- `EVE.IPH.UI.Avalonia`
 
-All later phases depend on this. Do it first and keep it lean.
+These later projects currently exist as project shells only, and several matching test projects also exist without real test coverage yet.
 
-#### 1.1 Value Objects
-Define strongly typed identifiers as C# `readonly record struct` to prevent primitive obsession:
-- `TypeId`, `ItemId`, `BlueprintId`, `RegionId`, `SystemId`, `StationId`
-- `CharacterId`, `CorporationId`, `AllianceId`
+**Known gaps relative to the original Phase 0 checklist:**
 
-#### 1.2 Result & Option Types
-- `Result<T>` — discriminated union of success/failure; wraps a value or an `Error` record
-- `Error` — record holding `Code` (string) and `Message` (string)
-- `Maybe<T>` — option type for nullable domain values (avoids nullable reference proliferation in return types)
-
-#### 1.3 Domain Enumerations
-- `ActivityType`: `Manufacturing`, `Copying`, `ResearchME`, `ResearchTE`, `Invention`, `Reaction`, `SimpleReaction`
-- `TechLevel`: `T1`, `T2`, `T3`, `Faction`, `Structure`
-- `MarketPriceType`: `Sell`, `Buy`, `Jita4Sell`, `Jita4Buy`, `Average`
-- `ReprocessingOreType`: `Raw`, `Compressed`, `MoonOre`, `Ice`
-
-#### 1.4 Core Interfaces (contracts implemented by Infrastructure)
-- `IMarketPriceSource` — fetch a batch of prices by TypeId
-- `IBlueprintRepository` — read blueprint materials and attributes from SDE
-- `IItemRepository` — read item names, groups, categories from SDE
-- `ICharacterRepository` — persist and retrieve character records
-- `ISettingsStore` — generic typed settings read/write
-
-#### 1.5 Tests
-- Value type equality, comparison, and ToString for all identifiers
-- `Result<T>` map, bind, and match exhaustiveness
-- `Maybe<T>` map and default fallback behaviour
+- No GitHub Actions workflow is present yet.
+- The Avalonia UI host project exists but does not contain application code.
 
 ---
 
-### Phase 2 — `EVE.IPH.Infrastructure.Data` (SQLite Repositories)
+## Next Milestone: Domain Service Extraction (Phases 5 → 6)
 
-Replaces the global `EVEDB` singleton and raw SQL strings scattered across `DBConnection.vb` and every form file.
-
-#### 2.1 Connection Factory
-- `IDbConnectionFactory` with a `SqliteConnectionFactory` implementation backed by `Microsoft.Data.Sqlite`
-- Connection string built from platform-appropriate app-data path
-
-#### 2.2 SDE Read Repositories (Dapper-based, read-only)
-These query the unmodified SDE SQLite file shipped with each EVE release:
-- `SqliteBlueprintRepository : IBlueprintRepository` — materials, time, skills for each blueprint activity
-- `SqliteItemRepository : IItemRepository` — `invTypes`, `invGroups`, `invCategories`
-- `SqliteRegionRepository : IRegionRepository` — `mapRegions`, `mapSolarSystems`, `staStations`
-- `SqliteAttributeRepository` — `dgmTypeAttributes` (for ship/structure bonuses)
-
-#### 2.3 Application Write Repositories
-These query/update the application's own database (separate file from the SDE):
-- `SqliteCharacterRepository : ICharacterRepository` — stored characters, OAuth tokens (encrypted)
-- `SqliteOwnedBlueprintRepository : IOwnedBlueprintRepository` — user's ME/TE-researched blueprints
-- `SqliteMarketCacheRepository : IMarketCacheRepository` — cached market prices with expiry timestamps
-- `SqliteShoppingListRepository : IShoppingListRepository` — persisted shopping lists
-
-#### 2.4 Schema Migration Runner
-- Simple versioned migration runner that applies numbered SQL scripts on startup
-- Migrations stored as embedded resources in the project
-- No breaking changes to schema that the legacy app reads
-
-#### 2.5 Tests
-- Integration tests using an in-memory SQLite database seeded with a minimal SDE snapshot
-- Round-trip tests for each write repository (insert → fetch → assert equality)
-- Migration idempotency test (running migrations twice does not error)
-
-> **Reference files from legacy app:** `DBConnection.vb`, `Globals.vb` (EVEDB usages), `EVEBlueprints.vb`, `EVEAssets.vb`, `EVEIndustryJobs.vb`
+**Goal:** Build the first domain-level services on top of the completed foundation and ESI infrastructure: character services first, then market services. This milestone should produce the first end-to-end business behaviour in the modern codebase while still avoiding UI work.
 
 ---
 
-### Phase 3 — `EVE.IPH.Infrastructure.Settings` (JSON Settings)
+### Phase 5 — `EVE.IPH.Domain.Characters` (character, skills, standings)
 
-Replaces `ProgramSettings.vb` XML serialisation and `Settings.vb` with a versioned, cross-platform JSON store.
+Once ESI infrastructure exists, the first real domain service layer can be extracted.
 
-#### 3.1 Settings Models
-Define plain C# records, one per logical group matching existing VB settings classes:
-- `ApplicationSettings` — window layout, last-used character, default market region
-- `ManufacturingSettings` — default facility, skill overrides, component build flags
-- `MarketSettings` — price source, cache TTL, region preferences
-- `ReprocessingSettings` — default plant efficiency, skill overrides
-- `UpdaterSettings` — auto-update channel, last-checked timestamp
+#### 5.1 Models
 
-#### 3.2 `JsonSettingsStore : ISettingsStore`
-- Generic `ReadAsync<T>` / `WriteAsync<T>` backed by `System.Text.Json`
-- Per-platform base path: `%APPDATA%\EVE-IPH` (Windows), `~/Library/Application Support/EVE-IPH` (macOS), `~/.config/eve-iph` (Linux)
-- Atomic write pattern (write to `.tmp`, then rename) to prevent corruption on crash
-- JSON schema version field in each file for forward-compatible migration
+- `Character`
+- `Corporation`
+- `Skill`
+- `SkillList`
+- `NpcStanding`
+- `ResearchAgent`
 
-#### 3.3 Legacy Migration
-- One-off migrator that reads the existing XML settings file on first run and writes JSON equivalents
-- Migrator is a distinct class; it is called once at startup and then disabled
+#### 5.2 Services
 
-#### 3.4 Tests
-- Serialisation round-trip for each settings record (all fields preserved)
-- Migration: given a legacy XML snapshot, output JSON matches expected record
-- Atomic write: simulate crash mid-write, assert previous settings remain intact
-- Platform path resolution: mock `Environment.GetFolderPath` for each platform
+- `ICharacterService`
+- `ISkillService`
+- `IStandingsService`
 
-> **Reference files from legacy app:** `ProgramSettings.vb`, `Settings.vb`
+#### 5.3 Behaviour to Implement
+
+- Load character data from ESI and persist it through repositories
+- Apply skill overrides and expose effective skill lookups
+- Compute standings-derived tax values and related derived values used by the legacy app
+
+#### 5.4 Tests
+
+- Skill level lookup coverage
+- Override behaviour coverage
+- Standing and tax-rate calculation coverage
+
+> **Reference files from legacy app:** `Character.vb`, `Corporation.vb`, `EVESkillList.vb`, `EVENPCStandings.vb`, `EVEResearchAgents.vb`
+
+---
+
+### Phase 6 — `EVE.IPH.Domain.Market` (market providers and caching)
+
+This phase establishes the shared price lookup layer needed by manufacturing, reprocessing, and shopping list work.
+
+#### 6.1 Models
+
+- `MarketPrice`
+- `PriceHistory`
+- `MarketOrder`
+
+#### 6.2 Services
+
+- `IMarketPriceProvider` implementations for ESI, EVEMarketer, and Fuzzworks
+- Caching decorator using `IMarketCacheRepository`
+- `IMarketService` to orchestrate provider selection and batch lookups
+
+#### 6.3 Behaviour to Implement
+
+- Batch price retrieval by type ID
+- Cache expiry rules migrated from `CacheBox.vb`
+- Provider selection driven by settings
+
+#### 6.4 Tests
+
+- Cache hit/miss and expiry tests
+- Provider selection tests
+- Price aggregation tests
+
+> **Reference files from legacy app:** `CacheBox.vb`, `EVEMarketer.vb`, `FuzzworksMarket.vb`, market-related code in `ESI.vb`
 
 ---
 
 ## Definition of Done for this Milestone
 
 | Criterion | How to verify |
-|---|---|
-| All three projects build without warnings | `dotnet build EVE-IPH-Modern.sln --configuration Release` exits 0 |
-| Every public type and method has at least one test | `dotnet test` — all green; coverage report shows >80% on Domain.Core and Infrastructure.* |
-| No global mutable state in new projects | Code review — no `static` fields that hold state |
-| Nullable reference types fully satisfied | Build output contains zero nullable warnings |
-| Schema changes are backward compatible | Legacy VB app still reads the SQLite file without errors after migrations run |
-| Settings migration runs cleanly | Integration test: seed XML file → run migrator → JSON output matches expected values |
+| --- | --- |
+| `Domain.Characters` and `Domain.Market` build cleanly on top of the completed ESI infrastructure | `dotnet build .\\EVE-IPH-Modern.slnx --configuration Release` exits 0 |
+| New domain services are covered by executable tests | `dotnet test .\\EVE-IPH-Modern.slnx --configuration Release` stays green and adds real coverage in the previously empty test projects |
+| No new global mutable state is introduced | Code review — no shared mutable `static` state in new projects |
+| Nullable reference types remain satisfied | Build output contains zero nullable warnings in the newly implemented projects |
+| Character and market services can run without UI code | Service tests instantiate dependencies directly without Avalonia or WinForms |
+| Character services exercise real ESI-backed workflows | Tests cover character load, skill lookups, and standings-derived calculations using the new ESI abstractions |
 
 ---
 
 ## Suggested Work Order
 
-1. **Phase 1 first** — it has no dependencies and unblocks Phases 2, 3, and all domain phases.
-2. **Phase 2 and Phase 3 in parallel** — they both depend only on Phase 1 interfaces and are independent of each other.
-3. Once all three are green in CI, open a PR to merge the milestone branch into the main development branch.
-4. Begin Phase 4 (ESI Infrastructure) and Phase 5 (Character Domain) in the next milestone.
+1. **Phase 5 first** — character services are now the narrowest domain slice that can exercise the completed ESI infrastructure end to end.
+2. **Phase 6 next** — market services unlock later manufacturing, reprocessing, and shopping list work.
+3. Add CI once these slices are in place so future domain work is gated by automated builds and tests.
 
 ---
 
 ## Key Legacy Files to Study Before Each Phase
 
 | Phase | Legacy files to read and understand |
-|---|---|
-| Phase 1 | `Blueprint.vb`, `Character.vb`, `Material.vb`, `Globals.vb` (type constants) |
-| Phase 2 | `DBConnection.vb`, `EVEBlueprints.vb`, `EVEAssets.vb`, `EVEIndustryJobs.vb`, `EVENPCStandings.vb` |
-| Phase 3 | `ProgramSettings.vb`, `Settings.vb`, `app.config` |
+| --- | --- |
+| Phase 4 | `ESI.vb`, `Character.vb`, `EVESkillList.vb`, `EVENPCStandings.vb` |
+| Phase 5 | `Character.vb`, `Corporation.vb`, `EVESkillList.vb`, `EVEResearchAgents.vb`, `EVENPCStandings.vb` |
+| Phase 6 | `CacheBox.vb`, `EVEMarketer.vb`, `FuzzworksMarket.vb`, market-related sections of `ESI.vb` |
 
 ---
 
 ## Out of Scope for This Milestone
 
-- ESI HTTP client (Phase 4)
-- Character domain services (Phase 5)
-- Any Avalonia UI work (Phase 11)
+- Avalonia UI work (Phase 11)
 - Manufacturing calculations (Phase 7)
-- Loyalty Points domain (added in latest master — will be Phase 10 extension)
+- Reprocessing calculations (Phase 8)
+- Shopping list logic (Phase 9)
+- Assets and industry jobs extraction (Phase 10)
+- Legacy project retirement work (Phase 12)
+- Loyalty Points domain extraction, which remains an additional legacy area to schedule after the current core domains
