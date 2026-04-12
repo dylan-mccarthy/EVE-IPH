@@ -20,6 +20,8 @@ public sealed record UpdatePriceTabSettingsModel
     public bool AdvancedComponents { get; init; } = true;
     public string SelectedRegion { get; init; } = "The Forge";
     public string SelectedSystem { get; init; } = "Jita";
+    public long ModernMarketRegionId { get; init; } = 10000002;
+    public string ModernMarketTypeIds { get; init; } = "34, 35, 36, 37";
     public string ItemsCombo { get; init; } = "Min Sell";
     public string RawMatsCombo { get; init; } = "Min Sell";
     public double ItemsPriceModifier { get; init; } = 0.0;

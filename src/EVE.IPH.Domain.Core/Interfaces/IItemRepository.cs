@@ -19,6 +19,12 @@ public interface IItemRepository
     /// list views and price lookups.
     /// </summary>
     Task<Result<IReadOnlyList<ItemRecord>>> GetItemsByGroupAsync(int groupId, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns all items whose group name matches any of the supplied names.</summary>
+    Task<Result<IReadOnlyList<ItemRecord>>> GetItemsByGroupNamesAsync(IReadOnlyCollection<string> groupNames, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns all items whose category name starts with the supplied prefix.</summary>
+    Task<Result<IReadOnlyList<ItemRecord>>> GetItemsByCategoryPrefixAsync(string categoryNamePrefix, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Core attributes of an inventory type from the SDE.</summary>

@@ -85,6 +85,68 @@ public sealed class SqliteItemRepository : IItemRepository
         }
     }
 
+    public async Task<Result<IReadOnlyList<ItemRecord>>> GetItemsByGroupNamesAsync(IReadOnlyCollection<string> groupNames, CancellationToken cancellationToken = default)
+    {
+        if (groupNames.Count == 0)
+        {
+            return Result<IReadOnlyList<ItemRecord>>.Success(Array.Empty<ItemRecord>());
+        }
+
+        try
+        {
+            using System.Data.IDbConnection connection = _connectionFactory.CreateConnection();
+            const string sql = """
+                SELECT DISTINCT IT.typeID, IT.typeName, IT.groupID, IC.groupName, IC.categoryID, IT.volume, IT.portionSize
+                FROM INVENTORY_TYPES AS IT
+                INNER JOIN INVENTORY_CATEGORIES AS IC ON IT.groupID = IC.groupID
+                INNER JOIN ITEM_LOOKUP AS IL ON IL.typeID = IT.typeID
+                WHERE IL.groupName IN @GroupNames
+                ORDER BY IT.typeName, IT.typeID
+                """;
+
+            IEnumerable<ItemDto> rows = await connection.QueryAsync<ItemDto>(
+                new CommandDefinition(sql, new { GroupNames = groupNames.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() }, cancellationToken: cancellationToken))
+                .ConfigureAwait(false);
+
+            return Result<IReadOnlyList<ItemRecord>>.Success(rows.Select(MapItem).ToList());
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<ItemRecord>>.Failure("DB_ERROR", ex.Message);
+        }
+    }
+
+    public async Task<Result<IReadOnlyList<ItemRecord>>> GetItemsByCategoryPrefixAsync(string categoryNamePrefix, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(categoryNamePrefix))
+        {
+            return Result<IReadOnlyList<ItemRecord>>.Failure("INVALID_CATEGORY_PREFIX", "Category prefix must not be empty.");
+        }
+
+        try
+        {
+            using System.Data.IDbConnection connection = _connectionFactory.CreateConnection();
+            const string sql = """
+                SELECT DISTINCT IT.typeID, IT.typeName, IT.groupID, IC.groupName, IC.categoryID, IT.volume, IT.portionSize
+                FROM INVENTORY_TYPES AS IT
+                INNER JOIN INVENTORY_CATEGORIES AS IC ON IT.groupID = IC.groupID
+                INNER JOIN ITEM_LOOKUP AS IL ON IL.typeID = IT.typeID
+                WHERE IL.categoryName LIKE @CategoryPattern
+                ORDER BY IT.typeName, IT.typeID
+                """;
+
+            IEnumerable<ItemDto> rows = await connection.QueryAsync<ItemDto>(
+                new CommandDefinition(sql, new { CategoryPattern = categoryNamePrefix.Trim() + "%" }, cancellationToken: cancellationToken))
+                .ConfigureAwait(false);
+
+            return Result<IReadOnlyList<ItemRecord>>.Success(rows.Select(MapItem).ToList());
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<ItemRecord>>.Failure("DB_ERROR", ex.Message);
+        }
+    }
+
     private static ItemRecord MapItem(ItemDto row) => new(
         new TypeId(row.typeID),
         row.typeName,

@@ -114,6 +114,9 @@ public sealed class MainWindowViewModelTests
         CharacterManagementViewModel characterManagement = await CreateCharacterManagementViewModelAsync();
         BlueprintManagementViewModel blueprints = await CreateBlueprintManagementViewModelAsync();
         ManufacturingWorkspaceViewModel manufacturing = await CreateManufacturingWorkspaceViewModelAsync();
+        MarketPriceViewModel market = await CreateMarketPriceViewModelAsync();
+        ShoppingListViewModel shoppingList = await CreateShoppingListViewModelAsync();
+        MiningReprocessingViewModel miningReprocessing = await CreateMiningReprocessingViewModelAsync();
         StructureFacilityManagementViewModel structureFacilities = await CreateStructureFacilityManagementViewModelAsync();
         AssetsViewModel assets = await CreateAssetsViewModelAsync();
         IndustryJobsViewModel industryJobs = await CreateIndustryJobsViewModelAsync();
@@ -123,6 +126,9 @@ public sealed class MainWindowViewModelTests
             characterManagement,
             blueprints,
             manufacturing,
+            market,
+            shoppingList,
+            miningReprocessing,
             structureFacilities,
             assets,
             industryJobs,
@@ -193,6 +199,26 @@ public sealed class MainWindowViewModelTests
         return viewModel;
     }
 
+    private static async Task<MarketPriceViewModel> CreateMarketPriceViewModelAsync()
+    {
+        IMarketPriceQueryService queryService = Substitute.For<IMarketPriceQueryService>();
+        IMarketPriceCommandService commandService = Substitute.For<IMarketPriceCommandService>();
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(new MarketPriceScreenData(
+            10000002,
+            "34, 35, 36, 37",
+            MarketPriceSourceKind.Fuzzworks,
+            [
+                new MarketPriceSourceOption(MarketPriceSourceKind.Tranquility, "Tranquility"),
+                new MarketPriceSourceOption(MarketPriceSourceKind.EveMarketer, "EVE Marketer"),
+                new MarketPriceSourceOption(MarketPriceSourceKind.Fuzzworks, "Fuzzworks"),
+            ],
+            "Enter item type IDs and a region ID to load live market prices through the modern market service."));
+
+        MarketPriceViewModel viewModel = new(queryService, commandService);
+        await viewModel.LoadTask;
+        return viewModel;
+    }
+
     private static async Task<StructureFacilityManagementViewModel> CreateStructureFacilityManagementViewModelAsync()
     {
         IStructureFacilityManagementQueryService queryService = Substitute.For<IStructureFacilityManagementQueryService>();
@@ -206,6 +232,39 @@ public sealed class MainWindowViewModelTests
             "Loaded structures and facilities."));
 
         StructureFacilityManagementViewModel viewModel = new(queryService, commandService);
+        await viewModel.LoadTask;
+        return viewModel;
+    }
+
+    private static async Task<MiningReprocessingViewModel> CreateMiningReprocessingViewModelAsync()
+    {
+        IMiningReprocessingWorkspaceQueryService queryService = Substitute.For<IMiningReprocessingWorkspaceQueryService>();
+        IMiningReprocessingWorkspaceCommandService commandService = Substitute.For<IMiningReprocessingWorkspaceCommandService>();
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(new MiningReprocessingScreenData(
+            "Veldspar|1000|0.1|15|22000|350\nScordite|500|0.15|18|11500|120",
+            3600d,
+            2,
+            false,
+            false,
+            "Enter belt lines to compare raw sale value versus refined sale value for a narrow belt-flip slice."));
+
+        MiningReprocessingViewModel viewModel = new(queryService, commandService);
+        await viewModel.LoadTask;
+        return viewModel;
+    }
+
+    private static async Task<ShoppingListViewModel> CreateShoppingListViewModelAsync()
+    {
+        IShoppingListWorkspaceQueryService queryService = Substitute.For<IShoppingListWorkspaceQueryService>();
+        IShoppingListWorkspaceCommandService commandService = Substitute.For<IShoppingListWorkspaceCommandService>();
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(new ShoppingListScreenData(
+            [new ShoppingListRow(34, "Tritanium", 100, 5d)],
+            1,
+            100,
+            500d,
+            "Loaded 1 persisted shopping-list row from the local SQLite store."));
+
+        ShoppingListViewModel viewModel = new(queryService, commandService);
         await viewModel.LoadTask;
         return viewModel;
     }

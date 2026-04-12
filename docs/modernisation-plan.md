@@ -272,7 +272,7 @@ Projects: `EVE.IPH.Domain.Assets`, extended `EVE.IPH.Domain.Industry`
 
 Projects: `EVE.IPH.UI.Avalonia`
 
-- Current repo status: Phase 11 is now through the first core-tab tranche. `EVE.IPH.UI.Avalonia` is a real Avalonia desktop host with desktop lifetime bootstrap, DI composition root, a shell window, reusable modal dialog infrastructure, first-run/update/import dialog seams, JSONL SDE bootstrap/version surfacing, and running screens for characters, blueprints, manufacturing, facilities, assets, industry jobs, research agents/datacores, and settings. The shell now supports multi-character onboarding, a generated local `All Skills V` placeholder, character-keyed token persistence, explicit corporation connections for corporation-scoped asset/job data, token-health surfacing in character management, mixed-owner asset and blueprint ownership across characters and corporations, role-qualified corporation capability persistence (`Director` / `Factory Manager`), query/command application-service seams for shell-facing workflows, persisted structure/facility configuration, the first blueprint-management editing workflow, a manufacturing workspace MVP over the deterministic calculators, and a first Upwell structure/facility-management slice with module persistence and delete cleanup orchestration. A dedicated `EVE.IPH.UI.Avalonia.Tests` project covers the shell seams and the completed blueprint, manufacturing, and facilities tabs, and the tranche has been revalidated with focused milestone tests plus a full `Release` solution build.
+- Current repo status: Phase 11 is now through the remaining production-workflow tranche. `EVE.IPH.UI.Avalonia` is a real Avalonia desktop host with desktop lifetime bootstrap, DI composition root, a shell window, reusable modal dialog infrastructure, first-run/update/import dialog seams, JSONL SDE bootstrap/version surfacing, and running screens for characters, blueprints, manufacturing, market/update workflows, shopping lists, mining/reprocessing, facilities, assets, industry jobs, research agents/datacores, and settings. The shell now supports multi-character onboarding, a generated local `All Skills V` placeholder, character-keyed token persistence, explicit corporation connections for corporation-scoped asset/job data, token-health surfacing in character management, mixed-owner asset and blueprint ownership across characters and corporations, role-qualified corporation capability persistence (`Director` / `Factory Manager`), query/command application-service seams for shell-facing workflows, persisted structure/facility configuration, the first blueprint-management editing workflow, a manufacturing workspace MVP over the deterministic calculators, a first Upwell structure/facility-management slice with module persistence and delete cleanup orchestration, a market workspace with persisted source/region/watchlists plus saved-category watchlist generation, a persisted shopping-list workspace over the current repository-backed list shape, and a first belt-flip mining/reprocessing workspace over the extracted reprocessing domain. A dedicated `EVE.IPH.UI.Avalonia.Tests` project covers the shell seams and the completed market, shopping-list, mining/reprocessing, blueprint, manufacturing, and facilities tabs, and the tranche has been revalidated with focused milestone tests, a full Avalonia UI suite run, and a full `Release` solution build.
 
 - [x] Bootstrap the Avalonia host itself: add the `App`, `Program`, desktop lifetime wiring, theme/resources, and first main window so the project is a real runnable UI application rather than only a referenced project shell
 - [x] Configure the DI container wiring the existing infrastructure implementations and Phase 5-10 domain services into the Avalonia composition root
@@ -293,9 +293,9 @@ Projects: `EVE.IPH.UI.Avalonia`
   - [x] Blueprint management and corporation blueprint views
   - [x] Manufacturing tab
   - [x] Upwell structure fitting / facility management
-  - [ ] Market prices / update tab
-  - [ ] Shopping list
-  - [ ] Mining / reprocessing tab
+  - [x] Market prices / update tab
+  - [x] Shopping list
+  - [x] Mining / reprocessing tab
   - [ ] Settings refinements beyond the current shell status surface
   - [ ] Character / corporation management refinements beyond the current connect/refresh/default/remove workflow
 - [ ] Reassess whether a splash screen or explicit loading workflow is still justified once the first shell and read-only tabs are running
@@ -303,11 +303,11 @@ Projects: `EVE.IPH.UI.Avalonia`
 
 **Recommended next continuation order:**
 
-1. Rebuild the market prices and update workflows on top of the current query/command shell seams.
-2. Integrate the shopping-list workflow into the Avalonia shell using the existing domain services and manufacturing inputs.
-3. Rebuild the mining and reprocessing screens after the market and shopping flows are stable.
-4. Finish the remaining settings and character/corporation-management refinements once the core production tabs are in place.
-5. Reassess startup/loading and update-distribution workflows after the remaining tabs are running end to end.
+1. Finish the remaining settings refinements so the shell surfaces real application/update/startup state instead of placeholder status text.
+2. Tighten the character and corporation management workflows beyond the current connect/refresh/default/remove baseline, especially around corporation UX and richer shell-state feedback.
+3. Reassess startup/loading now that the remaining production tabs are running end to end.
+4. Reassess update-distribution behavior once the settings and shell-state refinements clarify what should stay in-shell versus packaging/distribution workflows.
+5. Use the stabilized shell to drive the final parity audit before Phase 12 legacy decommissioning work.
 
 **Output:** The application has a real Avalonia shell backed by the modern service layer, with the first read-only screens proving that the extracted domains can power the new UI without legacy VB code.
 

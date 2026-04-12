@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="EVE.IPH.UI.Avalonia.Views.MiningReprocessingView">
+  <Grid Margin="20" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="12">
+    <StackPanel Spacing="10">
+      <TextBlock FontSize="18" FontWeight="SemiBold" Text="Mining &amp; Reprocessing" />
+      <TextBlock Opacity="0.8"
+                 TextWrapping="Wrap"
+                 Text="This first mining/reprocessing slice is a belt-flip workspace over the extracted reprocessing domain. It compares selling belt contents raw versus refining them, while keeping ore conversion and broader legacy mining tools deferred for later milestones." />
+
+      <Grid ColumnDefinitions="2*,Auto,Auto,Auto,Auto" ColumnSpacing="12">
+        <StackPanel>
+          <TextBlock FontWeight="SemiBold" Text="Belt Lines" />
+          <TextBox AcceptsReturn="True"
+                   MinHeight="140"
+                   Text="{Binding BeltLinesText}"
+                   Watermark="Name|Quantity|MiningVolumePerUnit|RawUnitSaleValue|RefinedSaleValue|OptionalReprocessingUsage|OptionalCompressionBatchSize|OptionalCompressedBatchSaleValue|OptionalCompressedBatchVolume" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="1">
+          <TextBlock FontWeight="SemiBold" Text="m3/hr per miner" />
+          <NumericUpDown Minimum="1" Maximum="100000000" Value="{Binding MiningVolumePerHourPerMiner}" Width="150" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="2">
+          <TextBlock FontWeight="SemiBold" Text="Miner Count" />
+          <NumericUpDown Minimum="1" Maximum="1000" Value="{Binding MinerCount}" Width="110" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="3" VerticalAlignment="Bottom" Spacing="10">
+          <CheckBox Content="Calculate Per Miner" IsChecked="{Binding CalculatePerMiner}" />
+          <CheckBox Content="Use Compressed Sale Values" IsChecked="{Binding UseCompressedSaleValues}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="12" VerticalAlignment="Bottom">
+          <Button Content="Reload Defaults" Click="Reload_Click" IsEnabled="{Binding CanRefresh}" />
+          <Button Content="Calculate Belt Flip" Click="Calculate_Click" IsEnabled="{Binding CanCalculate}" />
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+
+    <TextBlock Grid.Row="1" Opacity="0.8" TextWrapping="Wrap" Text="{Binding StatusText}" />
+
+    <Border Grid.Row="2" Padding="16" CornerRadius="12" Background="#101B2B" BorderBrush="#28415F" BorderThickness="1">
+      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*" RowSpacing="10" ColumnSpacing="16">
+        <TextBlock FontWeight="SemiBold" Text="Better Outcome" />
+        <TextBlock Grid.Column="1" Text="{Binding Result.BetterOutcome}" />
+
+        <TextBlock Grid.Row="1" FontWeight="SemiBold" Text="Raw vs Refined Value" />
+        <TextBlock Grid.Row="1" Grid.Column="1" Text="Raw {Binding Result.RawSaleValue, StringFormat='{}{0:N2}'} | Refined {Binding Result.RefinedSaleValue, StringFormat='{}{0:N2}'}" />
+
+        <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Flip Hours" />
+        <TextBlock Grid.Row="2" Grid.Column="1" Text="Fleet {Binding Result.HoursToFlip, StringFormat='{}{0:N4}'} | Per Miner {Binding Result.HoursToFlipPerMiner, StringFormat='{}{0:N4}'}" />
+
+        <TextBlock Grid.Row="3" FontWeight="SemiBold" Text="ISK per Hour" />
+        <TextBlock Grid.Row="3" Grid.Column="1" Text="Raw {Binding Result.RawSaleIskPerHour, StringFormat='{}{0:N2}'} | Refined {Binding Result.RefinedSaleIskPerHour, StringFormat='{}{0:N2}'}" />
+
+        <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Volume and Reprocessing" />
+        <TextBlock Grid.Row="4" Grid.Column="1" Text="Mining Volume {Binding Result.MiningVolume, StringFormat='{}{0:N2}'} | Display Volume {Binding Result.DisplayVolume, StringFormat='{}{0:N2}'} | Reprocessing Usage {Binding Result.TotalReprocessingUsage, StringFormat='{}{0:N2}'}" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

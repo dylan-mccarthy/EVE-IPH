@@ -53,6 +53,15 @@
       <TabItem Header="Manufacturing">
         <views:ManufacturingWorkspaceView DataContext="{Binding Manufacturing}" />
       </TabItem>
+      <TabItem Header="Market">
+        <views:MarketPriceView DataContext="{Binding Market}" />
+      </TabItem>
+      <TabItem Header="Shopping List">
+        <views:ShoppingListView DataContext="{Binding ShoppingList}" />
+      </TabItem>
+      <TabItem Header="Mining &amp; Reprocessing">
+        <views:MiningReprocessingView DataContext="{Binding MiningReprocessing}" />
+      </TabItem>
       <TabItem Header="Facilities">
         <views:StructureFacilityManagementView DataContext="{Binding StructureFacilities}" />
       </TabItem>

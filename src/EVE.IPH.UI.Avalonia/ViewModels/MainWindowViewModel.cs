@@ -19,6 +19,9 @@ public sealed class MainWindowViewModel : ObservableObject
         CharacterManagementViewModel characterManagement,
         BlueprintManagementViewModel blueprints,
         ManufacturingWorkspaceViewModel manufacturing,
+        MarketPriceViewModel market,
+        ShoppingListViewModel shoppingList,
+        MiningReprocessingViewModel miningReprocessing,
         StructureFacilityManagementViewModel structureFacilities,
         AssetsViewModel assets,
         IndustryJobsViewModel industryJobs,
@@ -30,6 +33,9 @@ public sealed class MainWindowViewModel : ObservableObject
         CharacterManagement = characterManagement ?? throw new ArgumentNullException(nameof(characterManagement));
         Blueprints = blueprints ?? throw new ArgumentNullException(nameof(blueprints));
         Manufacturing = manufacturing ?? throw new ArgumentNullException(nameof(manufacturing));
+        Market = market ?? throw new ArgumentNullException(nameof(market));
+        ShoppingList = shoppingList ?? throw new ArgumentNullException(nameof(shoppingList));
+        MiningReprocessing = miningReprocessing ?? throw new ArgumentNullException(nameof(miningReprocessing));
         StructureFacilities = structureFacilities ?? throw new ArgumentNullException(nameof(structureFacilities));
         Assets = assets ?? throw new ArgumentNullException(nameof(assets));
         IndustryJobs = industryJobs ?? throw new ArgumentNullException(nameof(industryJobs));
@@ -52,7 +58,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public string Title => "EVE IPH Modern";
 
-    public string Subtitle => "Phase 11 host with DI-backed shell services over the extracted domains, now including blueprint management, manufacturing, and the first structure/facility-management workflows.";
+    public string Subtitle => "Phase 11 host with DI-backed shell services over the extracted domains, now including blueprint management, manufacturing, the first market/update workspace, shopping-list workflows, the first mining/reprocessing slice, and structure/facility-management workflows.";
 
     public string DatabasePath => Path.GetFullPath(AppDatabasePath.GetCanonicalDatabasePath());
 
@@ -116,6 +122,12 @@ public sealed class MainWindowViewModel : ObservableObject
     public CharacterManagementViewModel CharacterManagement { get; }
 
     public ManufacturingWorkspaceViewModel Manufacturing { get; }
+
+    public MarketPriceViewModel Market { get; }
+
+    public ShoppingListViewModel ShoppingList { get; }
+
+    public MiningReprocessingViewModel MiningReprocessing { get; }
 
     public StructureFacilityManagementViewModel StructureFacilities { get; }
 
