@@ -17,6 +17,9 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public MainWindowViewModel(
         CharacterManagementViewModel characterManagement,
+        BlueprintManagementViewModel blueprints,
+        ManufacturingWorkspaceViewModel manufacturing,
+        StructureFacilityManagementViewModel structureFacilities,
         AssetsViewModel assets,
         IndustryJobsViewModel industryJobs,
         ResearchAgentsViewModel researchAgents,
@@ -25,6 +28,9 @@ public sealed class MainWindowViewModel : ObservableObject
         StaticDataSettingsModel? staticDataSettings = null)
     {
         CharacterManagement = characterManagement ?? throw new ArgumentNullException(nameof(characterManagement));
+        Blueprints = blueprints ?? throw new ArgumentNullException(nameof(blueprints));
+        Manufacturing = manufacturing ?? throw new ArgumentNullException(nameof(manufacturing));
+        StructureFacilities = structureFacilities ?? throw new ArgumentNullException(nameof(structureFacilities));
         Assets = assets ?? throw new ArgumentNullException(nameof(assets));
         IndustryJobs = industryJobs ?? throw new ArgumentNullException(nameof(industryJobs));
         ResearchAgents = researchAgents ?? throw new ArgumentNullException(nameof(researchAgents));
@@ -46,7 +52,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public string Title => "EVE IPH Modern";
 
-    public string Subtitle => "Phase 11 host bootstrap with DI-backed read-only screens over the extracted Phase 10 domain services.";
+    public string Subtitle => "Phase 11 host with DI-backed shell services over the extracted domains, now including blueprint management, manufacturing, and the first structure/facility-management workflows.";
 
     public string DatabasePath => Path.GetFullPath(AppDatabasePath.GetCanonicalDatabasePath());
 
@@ -105,7 +111,13 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public AssetsViewModel Assets { get; }
 
+    public BlueprintManagementViewModel Blueprints { get; }
+
     public CharacterManagementViewModel CharacterManagement { get; }
+
+    public ManufacturingWorkspaceViewModel Manufacturing { get; }
+
+    public StructureFacilityManagementViewModel StructureFacilities { get; }
 
     public IndustryJobsViewModel IndustryJobs { get; }
 

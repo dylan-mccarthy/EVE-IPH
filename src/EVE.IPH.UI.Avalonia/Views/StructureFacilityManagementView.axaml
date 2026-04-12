@@ -1,0 +1,167 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="EVE.IPH.UI.Avalonia.Views.StructureFacilityManagementView">
+  <Grid Margin="20" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+    <StackPanel Spacing="10">
+      <Button HorizontalAlignment="Left"
+              Content="Reload Structures And Facilities"
+              Click="Reload_Click"
+              IsEnabled="{Binding CanRefresh}" />
+      <TextBlock Opacity="0.8" TextWrapping="Wrap" Text="{Binding StatusText}" />
+    </StackPanel>
+
+    <Grid Grid.Row="2" ColumnDefinitions="2*,3*" ColumnSpacing="16">
+      <Border Padding="16"
+              CornerRadius="12"
+              Background="#101B2B"
+              BorderBrush="#28415F"
+              BorderThickness="1">
+        <Grid RowDefinitions="Auto,*" RowSpacing="12">
+          <TextBlock FontSize="18" FontWeight="SemiBold" Text="Structures" />
+
+          <Grid Grid.Row="1" RowDefinitions="*,Auto" RowSpacing="12">
+            <ListBox ItemsSource="{Binding Structures}"
+                     SelectedItem="{Binding SelectedStructure}">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Border Margin="0,0,0,8" Padding="12" CornerRadius="10" Background="#16263B" BorderBrush="#28415F" BorderThickness="1">
+                    <StackPanel Spacing="4">
+                      <TextBlock FontWeight="SemiBold" Text="{Binding StructureName}" />
+                      <TextBlock Opacity="0.75" Text="{Binding SummaryText}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <StackPanel Grid.Row="1" Spacing="8">
+              <TextBlock FontWeight="SemiBold" Text="Structure ID" />
+              <NumericUpDown Minimum="0" Maximum="9999999999999" Value="{Binding StructureId}" />
+              <TextBlock FontWeight="SemiBold" Text="Structure Name" />
+              <TextBox Text="{Binding StructureName}" />
+              <TextBlock FontWeight="SemiBold" Text="Structure Type ID" />
+              <NumericUpDown Minimum="0" Maximum="999999" Value="{Binding StructureTypeId}" />
+              <TextBlock FontWeight="SemiBold" Text="Solar System ID" />
+              <NumericUpDown Minimum="0" Maximum="9999999999999" Value="{Binding StructureSolarSystemId}" />
+              <TextBlock FontWeight="SemiBold" Text="Region ID" />
+              <NumericUpDown Minimum="0" Maximum="9999999999999" Value="{Binding StructureRegionId}" />
+              <TextBlock FontWeight="SemiBold" Text="Owner Corporation ID (optional)" />
+              <TextBox Text="{Binding StructureOwnerCorporationIdText}" />
+              <CheckBox Content="Manual Entry" IsChecked="{Binding StructureIsManualEntry}" />
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Content="Save Structure" Click="SaveStructure_Click" IsEnabled="{Binding CanSaveStructure}" />
+                <Button Content="Delete Structure" Click="DeleteStructure_Click" IsEnabled="{Binding CanDeleteStructure}" />
+              </StackPanel>
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1"
+              Padding="16"
+              CornerRadius="12"
+              Background="#101B2B"
+              BorderBrush="#28415F"
+              BorderThickness="1">
+        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
+          <TextBlock FontSize="18" FontWeight="SemiBold" Text="Facility Settings" />
+
+          <Grid Grid.Row="1" ColumnDefinitions="2*,2*,Auto" ColumnSpacing="12">
+            <StackPanel>
+              <TextBlock FontWeight="SemiBold" Text="Character" />
+              <ComboBox ItemsSource="{Binding Characters}" SelectedItem="{Binding SelectedCharacter}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Name}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+            <StackPanel Grid.Column="1">
+              <TextBlock FontWeight="SemiBold" Text="Production Type" />
+              <ComboBox ItemsSource="{Binding ProductionTypes}" SelectedItem="{Binding SelectedProductionType}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding DisplayName}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+            <Button Grid.Column="2"
+                    VerticalAlignment="Bottom"
+                    Content="Use Selected Structure"
+                    Click="UseSelectedStructure_Click"
+                    IsEnabled="{Binding CanUseSelectedStructure}" />
+          </Grid>
+
+          <Grid Grid.Row="2" ColumnDefinitions="2*,3*" ColumnSpacing="16">
+            <ListBox ItemsSource="{Binding FacilityItems}" SelectedItem="{Binding SelectedFacility}">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Border Margin="0,0,0,8" Padding="12" CornerRadius="10" Background="#16263B" BorderBrush="#28415F" BorderThickness="1">
+                    <StackPanel Spacing="4">
+                      <TextBlock FontWeight="SemiBold" Text="{Binding ProductionTypeDisplayName}" />
+                      <TextBlock Opacity="0.75" Text="{Binding FacilityName}" />
+                      <TextBlock Opacity="0.75" Text="{Binding ModuleSummary}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <ScrollViewer Grid.Column="1">
+              <StackPanel Spacing="8">
+                <TextBlock FontWeight="SemiBold" Text="Facility ID" />
+                <NumericUpDown Minimum="0" Maximum="9999999999999" Value="{Binding FacilityId}" />
+                <TextBlock FontWeight="SemiBold" Text="Facility Name" />
+                <TextBox Text="{Binding FacilityName}" />
+                <TextBlock FontWeight="SemiBold" Text="Facility Kind" />
+                <ComboBox ItemsSource="{Binding FacilityKinds}" SelectedItem="{Binding SelectedFacilityKind}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding DisplayName}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock FontWeight="SemiBold" Text="Region ID" />
+                <NumericUpDown Minimum="0" Maximum="9999999999999" Value="{Binding FacilityRegionId}" />
+                <TextBlock FontWeight="SemiBold" Text="Region Name" />
+                <TextBox Text="{Binding FacilityRegionName}" />
+                <TextBlock FontWeight="SemiBold" Text="Solar System ID" />
+                <NumericUpDown Minimum="0" Maximum="9999999999999" Value="{Binding FacilitySolarSystemId}" />
+                <TextBlock FontWeight="SemiBold" Text="Solar System Name" />
+                <TextBox Text="{Binding FacilitySolarSystemName}" />
+                <TextBlock FontWeight="SemiBold" Text="Solar System Security" />
+                <NumericUpDown Minimum="-1" Maximum="1" Increment="0.1" FormatString="N2" Value="{Binding FacilitySolarSystemSecurity}" />
+                <TextBlock FontWeight="SemiBold" Text="Cost Index" />
+                <NumericUpDown Minimum="0" Maximum="1" Increment="0.001" FormatString="N4" Value="{Binding FacilityCostIndex}" />
+                <TextBlock FontWeight="SemiBold" Text="Activity Cost Per Second" />
+                <NumericUpDown Minimum="0" Maximum="999999" Increment="0.1" FormatString="N2" Value="{Binding FacilityActivityCostPerSecond}" />
+                <TextBlock FontWeight="SemiBold" Text="Tax Rate" />
+                <NumericUpDown Minimum="0" Maximum="1" Increment="0.001" FormatString="N4" Value="{Binding FacilityTaxRate}" />
+                <TextBlock FontWeight="SemiBold" Text="Faction Warfare Upgrade Level" />
+                <NumericUpDown Minimum="-1" Maximum="5" Value="{Binding FactionWarfareUpgradeLevel}" />
+                <CheckBox Content="Include Activity Cost" IsChecked="{Binding IncludeActivityCost}" />
+                <CheckBox Content="Include Activity Time" IsChecked="{Binding IncludeActivityTime}" />
+                <CheckBox Content="Include Activity Usage" IsChecked="{Binding IncludeActivityUsage}" />
+                <CheckBox Content="Convert To Ore" IsChecked="{Binding ConvertToOre}" />
+                <TextBlock FontWeight="SemiBold" Text="Material Multiplier Override" />
+                <TextBox Text="{Binding MaterialMultiplierOverrideText}" />
+                <TextBlock FontWeight="SemiBold" Text="Time Multiplier Override" />
+                <TextBox Text="{Binding TimeMultiplierOverrideText}" />
+                <TextBlock FontWeight="SemiBold" Text="Cost Multiplier Override" />
+                <TextBox Text="{Binding CostMultiplierOverrideText}" />
+                <TextBlock FontWeight="SemiBold" Text="Installed Module Type IDs" />
+                <TextBox Text="{Binding ModuleTypeIdsText}" Watermark="Comma-separated type IDs" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <Button Content="Save Facility" Click="SaveFacility_Click" IsEnabled="{Binding CanSaveFacility}" />
+                  <Button Content="Delete Facility" Click="DeleteFacility_Click" IsEnabled="{Binding CanDeleteFacility}" />
+                </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

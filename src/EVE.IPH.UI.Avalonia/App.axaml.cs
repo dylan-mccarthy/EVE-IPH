@@ -53,6 +53,11 @@ public partial class App : Application
             .GetAwaiter()
             .GetResult()
             .GetValueOrDefault(new StaticDataSettingsModel());
+        ApplicationSettingsModel applicationSettings = settingsStore
+            .ReadAsync<ApplicationSettingsModel>()
+            .GetAwaiter()
+            .GetResult()
+            .GetValueOrDefault(new ApplicationSettingsModel());
 
         services.AddEsiInfrastructure();
 
@@ -69,6 +74,7 @@ public partial class App : Application
         services.AddSingleton<IResearchAgentDatacoreService, ResearchAgentDatacoreService>();
         services.AddSingleton<ICorporationCapabilityResolver, EsiCorporationCapabilityResolver>();
         services.AddSingleton(staticDataSettings);
+        services.AddSingleton(applicationSettings);
 
         services.AddSingleton<IDbConnectionFactory>(_ => new SqliteConnectionFactory($"Data Source={databasePath}"));
         services.AddSingleton<ICharacterRepository, SqliteCharacterRepository>();
@@ -85,16 +91,24 @@ public partial class App : Application
         services.AddSingleton<IOwnedBlueprintViewRepository, SqliteOwnedBlueprintReadRepository>();
         services.AddSingleton<IResearchAgentDefinitionRepository, SqliteResearchAgentDefinitionRepository>();
         services.AddSingleton<IItemRepository, SqliteItemRepository>();
+        services.AddSingleton<IBlueprintRepository, SqliteBlueprintRepository>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IResearchAgentService, ResearchAgentService>();
         services.AddSingleton<IManufacturingFacilityConfigurationService, ManufacturingFacilityConfigurationService>();
         services.AddSingleton<IOwnedBlueprintWorkflowService, OwnedBlueprintWorkflowService>();
+        services.AddSingleton<ManufacturingAnalysisService>();
 
         services.AddSingleton<IPhase11SampleDataProvider, Phase11SampleDataProvider>();
         services.AddSingleton<IApplicationRestartService, ApplicationRestartService>();
         services.AddSingleton<IModalDialogService, ModalDialogService>();
         services.AddSingleton<ICharacterManagementQueryService, CharacterManagementQueryService>();
         services.AddSingleton<ICharacterManagementCommandService, CharacterManagementService>();
+        services.AddSingleton<IBlueprintManagementQueryService, BlueprintManagementQueryService>();
+        services.AddSingleton<IBlueprintManagementCommandService, BlueprintManagementCommandService>();
+        services.AddSingleton<IManufacturingWorkspaceQueryService, ManufacturingWorkspaceQueryService>();
+        services.AddSingleton<IManufacturingWorkspaceCommandService, ManufacturingWorkspaceCommandService>();
+        services.AddSingleton<IStructureFacilityManagementQueryService, StructureFacilityManagementQueryService>();
+        services.AddSingleton<IStructureFacilityManagementCommandService, StructureFacilityManagementCommandService>();
         services.AddSingleton<IShellDialogService, ShellDialogService>();
         services.AddSingleton<ILegacyDatabaseImportService, LegacyDatabaseImportService>();
         services.AddSingleton<IAssetsQueryService, AssetsQueryService>();
@@ -108,7 +122,10 @@ public partial class App : Application
                 provider.GetService<ICharacterRepository>(),
                 provider.GetService<IResearchAgentService>()));
 
-    services.AddSingleton<CharacterManagementViewModel>();
+        services.AddSingleton<CharacterManagementViewModel>();
+        services.AddSingleton<BlueprintManagementViewModel>();
+        services.AddSingleton<ManufacturingWorkspaceViewModel>();
+        services.AddSingleton<StructureFacilityManagementViewModel>();
         services.AddSingleton<AssetsViewModel>();
         services.AddSingleton<IndustryJobsViewModel>();
         services.AddSingleton<ResearchAgentsViewModel>();

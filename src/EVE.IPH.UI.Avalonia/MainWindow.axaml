@@ -47,6 +47,15 @@
       <TabItem Header="Characters">
         <views:CharacterManagementView DataContext="{Binding CharacterManagement}" />
       </TabItem>
+      <TabItem Header="Blueprints">
+        <views:BlueprintManagementView DataContext="{Binding Blueprints}" />
+      </TabItem>
+      <TabItem Header="Manufacturing">
+        <views:ManufacturingWorkspaceView DataContext="{Binding Manufacturing}" />
+      </TabItem>
+      <TabItem Header="Facilities">
+        <views:StructureFacilityManagementView DataContext="{Binding StructureFacilities}" />
+      </TabItem>
       <TabItem Header="Assets">
         <views:AssetsView DataContext="{Binding Assets}" />
       </TabItem>

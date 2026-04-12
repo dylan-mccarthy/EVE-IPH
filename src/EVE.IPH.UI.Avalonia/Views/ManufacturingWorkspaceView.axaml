@@ -1,0 +1,155 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="EVE.IPH.UI.Avalonia.Views.ManufacturingWorkspaceView">
+  <Grid Margin="20" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+    <StackPanel Spacing="10">
+      <Button HorizontalAlignment="Left"
+              Content="Reload Manufacturing Workspace"
+              Click="ReloadWorkspace_Click"
+              IsEnabled="{Binding CanRefresh}" />
+
+      <Grid ColumnDefinitions="2*,2*,*,*,*,*" ColumnSpacing="12">
+        <StackPanel>
+          <TextBlock FontWeight="SemiBold" Text="Blueprint" />
+          <ComboBox ItemsSource="{Binding Blueprints}"
+                    SelectedItem="{Binding SelectedBlueprint}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <StackPanel>
+                  <TextBlock Text="{Binding BlueprintName}" />
+                  <TextBlock Opacity="0.75" Text="{Binding OwnerName}" />
+                </StackPanel>
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+
+        <StackPanel Grid.Column="1">
+          <TextBlock FontWeight="SemiBold" Text="Facility" />
+          <ComboBox ItemsSource="{Binding Facilities}"
+                    SelectedItem="{Binding SelectedFacility}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <StackPanel>
+                  <TextBlock Text="{Binding DisplayName}" />
+                  <TextBlock Opacity="0.75" Text="{Binding DetailText}" />
+                </StackPanel>
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2">
+          <TextBlock FontWeight="SemiBold" Text="Runs" />
+          <NumericUpDown Minimum="1" Maximum="999999" Value="{Binding UserRuns}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="3">
+          <TextBlock FontWeight="SemiBold" Text="Sale Price" />
+          <NumericUpDown Minimum="0" Maximum="9999999999" Increment="100000" FormatString="N2" Value="{Binding ItemMarketCost}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="4">
+          <TextBlock FontWeight="SemiBold" Text="Raw Materials" />
+          <NumericUpDown Minimum="0" Maximum="9999999999" Increment="100000" FormatString="N2" Value="{Binding RawMaterialsCost}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="5">
+          <TextBlock FontWeight="SemiBold" Text="Component Materials" />
+          <NumericUpDown Minimum="0" Maximum="9999999999" Increment="100000" FormatString="N2" Value="{Binding ComponentMaterialsCost}" />
+        </StackPanel>
+      </Grid>
+
+      <Grid ColumnDefinitions="*,*,Auto,Auto,Auto" ColumnSpacing="12">
+        <StackPanel>
+          <TextBlock FontWeight="SemiBold" Text="Additional Costs" />
+          <NumericUpDown Minimum="0" Maximum="9999999999" Increment="100000" FormatString="N2" Value="{Binding AdditionalCosts}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="1">
+          <TextBlock FontWeight="SemiBold" Text="Estimated Item Value" />
+          <NumericUpDown Minimum="0" Maximum="9999999999" Increment="100000" FormatString="N2" Value="{Binding EstimatedItemValue}" />
+        </StackPanel>
+
+        <CheckBox Grid.Column="2"
+            VerticalAlignment="Bottom"
+                  Content="Apply Sales Tax"
+                  IsChecked="{Binding ApplySalesTax}" />
+
+        <CheckBox Grid.Column="3"
+            VerticalAlignment="Bottom"
+                  Content="Include Broker Fee"
+                  IsChecked="{Binding IncludeBrokerFee}" />
+
+        <Button Grid.Column="4"
+          VerticalAlignment="Bottom"
+                Content="Run Analysis"
+                Click="RunAnalysis_Click"
+                IsEnabled="{Binding CanAnalyze}" />
+      </Grid>
+    </StackPanel>
+
+    <TextBlock Grid.Row="1"
+               Opacity="0.8"
+               TextWrapping="Wrap"
+               Text="{Binding StatusText}" />
+
+    <Grid Grid.Row="2" ColumnDefinitions="3*,2*" ColumnSpacing="16">
+      <Border Padding="16"
+              CornerRadius="12"
+              Background="#101B2B"
+              BorderBrush="#28415F"
+              BorderThickness="1">
+        <StackPanel Spacing="10">
+          <TextBlock FontSize="18" FontWeight="SemiBold" Text="Selected Inputs" />
+          <TextBlock Opacity="0.75" TextWrapping="Wrap" Text="This MVP uses real owned blueprints, real saved manufacturing facilities, and live character skills, while keeping market and material assumptions explicit until the broader manufacturing extraction is wired." />
+
+          <TextBlock FontWeight="SemiBold" Text="Blueprint" />
+          <TextBlock Text="{Binding SelectedBlueprint.BlueprintName}" />
+          <TextBlock Opacity="0.75" Text="{Binding SelectedBlueprint.OwnerName}" />
+
+          <TextBlock FontWeight="SemiBold" Text="Facility" />
+          <TextBlock Text="{Binding SelectedFacility.DisplayName}" />
+          <TextBlock Opacity="0.75" Text="{Binding SelectedFacility.DetailText}" />
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="1"
+              Padding="16"
+              CornerRadius="12"
+              Background="#101B2B"
+              BorderBrush="#28415F"
+              BorderThickness="1">
+        <StackPanel Spacing="10">
+          <TextBlock FontSize="18" FontWeight="SemiBold" Text="Analysis Result" />
+          <TextBlock Opacity="0.75"
+                     TextWrapping="Wrap"
+                     Text="Run analysis to project costs, profit, and ISK/hour for the selected blueprint and facility." />
+
+          <StackPanel IsVisible="{Binding HasAnalysisResult}" Spacing="8">
+            <TextBlock FontWeight="SemiBold" Text="Build Decision" />
+            <TextBlock Text="{Binding AnalysisResult.BuildItem}" />
+            <TextBlock Opacity="0.75" Text="Can Build: {Binding AnalysisResult.CanBuild}  Cheaper To Build: {Binding AnalysisResult.CheaperToBuild}" />
+
+            <TextBlock FontWeight="SemiBold" Text="Costs" />
+            <TextBlock Text="Raw: {Binding AnalysisResult.TotalRawCost, StringFormat='{}{0:N2} ISK'}" />
+            <TextBlock Text="Component: {Binding AnalysisResult.TotalComponentCost, StringFormat='{}{0:N2} ISK'}" />
+            <TextBlock Text="Usage: {Binding AnalysisResult.TotalUsage, StringFormat='{}{0:N2} ISK'}" />
+
+            <TextBlock FontWeight="SemiBold" Text="Profit" />
+            <TextBlock Text="Raw: {Binding AnalysisResult.TotalRawProfit, StringFormat='{}{0:N2} ISK'}" />
+            <TextBlock Text="Component: {Binding AnalysisResult.TotalComponentProfit, StringFormat='{}{0:N2} ISK'}" />
+
+            <TextBlock FontWeight="SemiBold" Text="ISK per Hour" />
+            <TextBlock Text="Raw: {Binding AnalysisResult.TotalIskPerHourRaw, StringFormat='{}{0:N2}'}" />
+            <TextBlock Text="Component: {Binding AnalysisResult.TotalIskPerHourComponent, StringFormat='{}{0:N2}'}" />
+
+            <TextBlock FontWeight="SemiBold" Text="Timeline" />
+            <TextBlock Text="Total: {Binding AnalysisResult.TotalProductionTimeSeconds, StringFormat='{}{0:N0} s'}" />
+            <TextBlock Text="Blueprint: {Binding AnalysisResult.BlueprintProductionTimeSeconds, StringFormat='{}{0:N0} s'}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

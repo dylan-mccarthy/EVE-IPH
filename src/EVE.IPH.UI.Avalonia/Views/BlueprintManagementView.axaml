@@ -1,0 +1,103 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="EVE.IPH.UI.Avalonia.Views.BlueprintManagementView">
+  <Grid Margin="20" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+    <StackPanel Spacing="10">
+      <Button HorizontalAlignment="Left"
+              Content="Reload Blueprints"
+              Click="ReloadBlueprints_Click"
+              IsEnabled="{Binding CanRefresh}" />
+
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <ComboBox Width="220"
+                  ItemsSource="{Binding OwnerOptions}"
+                  SelectedItem="{Binding SelectedOwner}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding DisplayName}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <TextBox Width="280"
+                 Watermark="Search blueprints or owners"
+                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+      </StackPanel>
+    </StackPanel>
+
+    <TextBlock Grid.Row="1"
+               Opacity="0.8"
+               TextWrapping="Wrap"
+               Text="{Binding StatusText}" />
+
+    <Grid Grid.Row="2" ColumnDefinitions="3*,2*" ColumnSpacing="16">
+      <ListBox ItemsSource="{Binding Items}"
+               SelectedItem="{Binding SelectedBlueprint}">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Border Margin="0,0,0,8"
+                    Padding="12"
+                    CornerRadius="10"
+                    Background="#16263B"
+                    BorderBrush="#28415F"
+                    BorderThickness="1">
+              <Grid ColumnDefinitions="3*,2*,Auto" ColumnSpacing="16">
+                <StackPanel>
+                  <TextBlock FontWeight="SemiBold" Text="{Binding BlueprintName}" />
+                  <TextBlock Opacity="0.75" Text="{Binding OwnerName}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="{Binding OwnerKindText}" />
+                  <TextBlock Opacity="0.75" Text="{Binding BlueprintStateText}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" HorizontalAlignment="Right">
+                  <TextBlock HorizontalAlignment="Right" Text="{Binding Quantity}" />
+                  <TextBlock HorizontalAlignment="Right" Opacity="0.75" Text="ME {Binding Me}, TE {Binding Te}" />
+                </StackPanel>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <Border Grid.Column="1"
+              Padding="16"
+              CornerRadius="12"
+              Background="#101B2B"
+              BorderBrush="#28415F"
+              BorderThickness="1">
+        <StackPanel Spacing="10">
+          <TextBlock FontSize="18" FontWeight="SemiBold" Text="Selected Blueprint" />
+          <TextBlock Opacity="0.75"
+                     TextWrapping="Wrap"
+                     Text="Select a blueprint to edit its saved display data and production values." />
+
+          <TextBlock FontWeight="SemiBold" Text="Blueprint Name" />
+          <TextBox Text="{Binding EditBlueprintName}" IsEnabled="{Binding CanEditSelectedBlueprint}" />
+
+          <TextBlock FontWeight="SemiBold" Text="Quantity" />
+          <NumericUpDown Minimum="1" Maximum="999999" Value="{Binding EditQuantity}" IsEnabled="{Binding CanEditSelectedBlueprint}" />
+
+          <TextBlock FontWeight="SemiBold" Text="Material Efficiency" />
+          <NumericUpDown Minimum="0" Maximum="100" Value="{Binding EditMe}" IsEnabled="{Binding CanEditSelectedBlueprint}" />
+
+          <TextBlock FontWeight="SemiBold" Text="Time Efficiency" />
+          <NumericUpDown Minimum="0" Maximum="100" Value="{Binding EditTe}" IsEnabled="{Binding CanEditSelectedBlueprint}" />
+
+          <TextBlock FontWeight="SemiBold" Text="Runs (-1 means original)" />
+          <NumericUpDown Minimum="-1" Maximum="999999" Value="{Binding EditRuns}" IsEnabled="{Binding CanEditSelectedBlueprint}" />
+
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <Button Content="Save Blueprint"
+                    Click="SaveBlueprint_Click"
+                    IsEnabled="{Binding CanEditSelectedBlueprint}" />
+            <Button Content="Delete Blueprint"
+                    Click="DeleteBlueprint_Click"
+                    IsEnabled="{Binding CanEditSelectedBlueprint}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -1,6 +1,7 @@
 using EVE.IPH.Domain.Assets.Models;
 using EVE.IPH.Domain.Assets.Services;
 using EVE.IPH.Domain.Characters.Models;
+using EVE.IPH.Domain.Core.Enumerations;
 using EVE.IPH.Domain.Core.Identifiers;
 using EVE.IPH.Domain.Core.Interfaces;
 using EVE.IPH.Domain.Core.Results;
@@ -111,12 +112,18 @@ public sealed class MainWindowViewModelTests
         importService.GetDetectedLegacyDatabasePath().Returns(importService.GetDetectedLegacyDatabasePath());
 
         CharacterManagementViewModel characterManagement = await CreateCharacterManagementViewModelAsync();
+        BlueprintManagementViewModel blueprints = await CreateBlueprintManagementViewModelAsync();
+        ManufacturingWorkspaceViewModel manufacturing = await CreateManufacturingWorkspaceViewModelAsync();
+        StructureFacilityManagementViewModel structureFacilities = await CreateStructureFacilityManagementViewModelAsync();
         AssetsViewModel assets = await CreateAssetsViewModelAsync();
         IndustryJobsViewModel industryJobs = await CreateIndustryJobsViewModelAsync();
         ResearchAgentsViewModel researchAgents = await CreateResearchAgentsViewModelAsync();
 
         return new MainWindowViewModel(
             characterManagement,
+            blueprints,
+            manufacturing,
+            structureFacilities,
             assets,
             industryJobs,
             researchAgents,
@@ -154,6 +161,51 @@ public sealed class MainWindowViewModelTests
         commandService.RefreshAsync(Arg.Any<CancellationToken>()).Returns(call => queryService.GetScreenDataAsync(call.Arg<CancellationToken>()));
 
         AssetsViewModel viewModel = new(new AssetViewFilterService(), queryService, commandService);
+        await viewModel.LoadTask;
+        return viewModel;
+    }
+
+    private static async Task<BlueprintManagementViewModel> CreateBlueprintManagementViewModelAsync()
+    {
+        IBlueprintManagementQueryService queryService = Substitute.For<IBlueprintManagementQueryService>();
+        IBlueprintManagementCommandService commandService = Substitute.For<IBlueprintManagementCommandService>();
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(new BlueprintManagementScreenData(
+            [new BlueprintManagementRow(1001, "Kara Maken", false, new ItemId(7000001), 60015068, new BlueprintId(28607), "Vargur Blueprint", 1, 10, 20, -1, 1, true, true)],
+            [new BlueprintOwnerFilterOption(null, "All Owners"), new BlueprintOwnerFilterOption(1001, "Kara Maken")],
+            "Loaded owned blueprints for the connected characters and corporations."));
+
+        BlueprintManagementViewModel viewModel = new(queryService, commandService);
+        await viewModel.LoadTask;
+        return viewModel;
+    }
+
+    private static async Task<ManufacturingWorkspaceViewModel> CreateManufacturingWorkspaceViewModelAsync()
+    {
+        IManufacturingWorkspaceQueryService queryService = Substitute.For<IManufacturingWorkspaceQueryService>();
+        IManufacturingWorkspaceCommandService commandService = Substitute.For<IManufacturingWorkspaceCommandService>();
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(new ManufacturingWorkspaceScreenData(
+            [new ManufacturingBlueprintOption(1001, "Kara Maken", false, new BlueprintId(28607), "Vargur Blueprint", 10, 20, 2, 1, true)],
+            [new ManufacturingFacilityOption(new CharacterId(1001), FacilityProductionType.Manufacturing, 4001, "Tatara Alpha", "Kara Maken", "The Forge", "Jita", 0.035, 0.01)],
+            "Loaded manufacturing workspace."));
+
+        ManufacturingWorkspaceViewModel viewModel = new(queryService, commandService);
+        await viewModel.LoadTask;
+        return viewModel;
+    }
+
+    private static async Task<StructureFacilityManagementViewModel> CreateStructureFacilityManagementViewModelAsync()
+    {
+        IStructureFacilityManagementQueryService queryService = Substitute.For<IStructureFacilityManagementQueryService>();
+        IStructureFacilityManagementCommandService commandService = Substitute.For<IStructureFacilityManagementCommandService>();
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(new StructureFacilityManagementScreenData(
+            [new StructureFacilityCharacterOption(new CharacterId(1001), "Kara Maken", true)],
+            [new IndustryStructureRow(4001, "Tatara Alpha", 35835, 30000142, 10000002, 2001, true, DateTimeOffset.UtcNow)],
+            [new FacilitySettingsRow(new CharacterId(1001), "Kara Maken", FacilityProductionType.Manufacturing, 4001, "Tatara Alpha", IndustryFacilityKind.UpwellStructure, 4001, "Tatara Alpha", 10000002, "The Forge", 30000142, "Jita", 0.9, 0.035, 0, true, true, true, false, 0, 0.01, null, null, null, [6001, 6002])],
+            [new FacilityProductionTypeOption(FacilityProductionType.Manufacturing, "Manufacturing")],
+            [new FacilityKindOption(IndustryFacilityKind.UpwellStructure, "Upwell Structure")],
+            "Loaded structures and facilities."));
+
+        StructureFacilityManagementViewModel viewModel = new(queryService, commandService);
         await viewModel.LoadTask;
         return viewModel;
     }

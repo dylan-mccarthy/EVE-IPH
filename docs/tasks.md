@@ -4,96 +4,52 @@ This file turns the current Phase 11 priorities into small, achievable tasks. Th
 
 ## Current Focus
 
-Stabilise the application-service and persistence seams that the Avalonia shell depends on before investing in more feature UI.
+Continue Phase 11 after the completed blueprint, manufacturing, and facilities tranche by rebuilding the remaining production workflows on top of the current shell seams.
 
-## Milestone A: Corporation Capability Hardening
+## Tranche Closeout
 
-- [x] Define the modern corporation capability model.
-  - Decide what must be persisted separately from token scopes.
-  - Capture legacy requirements for assets, jobs, and blueprints in a single modern contract.
-- [x] Add repository fields and migrations for corporation capability state.
-  - Persist role-qualified access, not just the existence of a connection.
-  - Preserve compatibility with existing character and corporation connection rows.
-- [x] Add an ESI-backed capability resolver.
-  - Resolve the data needed to determine whether the authenticated character actually has the required corporation roles.
-  - Return deterministic failure states when scopes exist but roles do not.
-- [x] Update corporation onboarding to validate capabilities during connect.
-  - Fail clearly when the character lacks the required roles.
-  - Persist the resolved capability state on success.
-- [x] Update corporation refresh to revalidate capability state.
-  - Downgrade or invalidate stored capabilities when the backing access changes.
-  - Keep existing stored corporation data consistent with refreshed access.
-- [x] Add focused tests for corporation capability resolution and revalidation.
+- [x] Revalidate Milestones F-H with focused milestone tests.
+- [x] Revalidate the tranche with a full `Release` solution build.
+- [x] Update the roadmap and short-horizon tracker to reflect the completed blueprint, manufacturing, and facilities tranche.
 
-## Milestone B: Corporation Blueprint Slice
+## Milestone I: Market Prices And Update Workflows
 
-- [x] Define corporation blueprint domain and persistence contracts.
-  - Reuse or extend the existing owned blueprint model where possible.
-  - Avoid separate UI-only shaping models at this stage.
-- [x] Add the missing ESI adapter for corporation blueprints.
-  - Map the raw ESI payload to the modern blueprint ownership model.
-  - Ensure the adapter works with explicit authenticated character context.
-- [x] Add repository and migration support for corporation-owned blueprints.
-  - Support replace-or-refresh semantics similar to assets and jobs.
-  - Keep personal and corporation ownership queryable through one coherent shape.
-- [x] Add blueprint refresh orchestration.
-  - Refresh corporation blueprints only when the stored capability state allows it.
-  - Keep refresh failures isolated to the blueprint slice.
-- [x] Add read-side query support for mixed blueprint ownership.
-  - Make the resulting model usable by blueprint management and manufacturing.
-- [x] Add integration and domain tests for corporation blueprint persistence and refresh.
+- [ ] Inventory the legacy market/update workflows that still need a first modern shell slice.
+  - Bound the MVP to price refresh, update progress/state, and the first usable price display surface.
+  - Keep deferred legacy breadth explicit: regional comparisons, historical graphs, and niche filters can follow later.
+- [ ] Define query/command services for market data and update orchestration.
+  - Keep refresh workflows and update-state transitions out of view-models.
+  - Reuse existing domain and infrastructure seams where they already exist.
+- [ ] Build the first Avalonia market/update view-model and view.
+  - Support loading prices, running an update workflow, and surfacing deterministic status/error states.
+  - Keep the first slice honest about any still-missing market derivations.
+- [ ] Add focused tests for market/update query, command, and view-model behavior.
+- [ ] Run focused validation and a milestone-end `Release` build.
 
-## Milestone C: Screen-Facing Application Services
+## Milestone J: Shopping List Shell Integration
 
-- [x] Inventory the current UI services that still combine orchestration, read shaping, and screen state assumptions.
-  - Start with character management, assets, and industry jobs.
-- [x] Define a query/command split for shell-facing services.
-  - Queries should return stable screen-ready data contracts.
-  - Commands should own refresh, connect, delete, and update workflows.
-- [x] Refactor character and corporation management onto the new service split.
-  - Keep token-status, onboarding, and deletion behavior out of view-models.
-- [x] Refactor assets and industry jobs screens to depend only on query/command services.
-  - Keep repository and refresh orchestration behind the application-service boundary.
-- [x] Add focused tests for the new service contracts.
-  - Validate empty, success, degraded, and partial-failure paths.
+- [ ] Inventory the shopping-list workflows already supported by the extracted domains.
+  - Start with build/buy outputs and the first persisted or exportable list shape.
+  - Keep later convenience features separate from the first end-to-end shell slice.
+- [ ] Define shopping-list screen contracts and commands.
+  - Reuse manufacturing inputs and current ownership/facility workflows where needed.
+  - Keep any persistence/export orchestration behind application services.
+- [ ] Build the first Avalonia shopping-list view-model and view.
+  - Support loading a list, projecting the first actionable rows, and handling empty/error states.
+- [ ] Add focused tests for shopping-list shell behavior.
+- [ ] Run focused validation and a milestone-end `Release` build.
 
-## Milestone D: Manufacturing Input Foundations
+## Milestone K: Mining And Reprocessing Shell Slice
 
-- [x] Inventory the manufacturing inputs that are still legacy-shaped or UI-blocking.
-  - Structures, facility bonuses, blueprint ownership/edit state, and any remaining persisted overrides.
-- [x] Define the persistence model for structures and facility configuration.
-  - Cover what manufacturing and Upwell fitting both need.
-- [x] Add repository and migration support for structures and facility settings.
-- [x] Define the application/domain services that resolve manufacturing inputs from persisted state.
-  - Keep the existing deterministic manufacturing calculators unchanged.
-- [x] Add editable blueprint ownership/workflow support needed by the future blueprint-management and manufacturing tabs.
-- [x] Add integration tests for structure/facility persistence and manufacturing input resolution.
+- [ ] Inventory the first mining/reprocessing workflows that already have usable domain seams.
+  - Prefer one narrow vertical slice over partial parity across both legacy tabs.
+- [ ] Define query/command services for the chosen mining/reprocessing MVP.
+- [ ] Build the first Avalonia mining/reprocessing view-model and view.
+- [ ] Add focused tests for the mining/reprocessing shell slice.
+- [ ] Run focused validation and a milestone-end `Release` build.
 
-## Milestone E: Cross-Cutting Validation
+## After This Tranche
 
-- [x] Add onboarding integration tests that cover:
-  - character connect
-  - corporation connect
-  - capability downgrade or loss
-  - mixed-owner refresh behavior
-- [x] Add delete-path integration tests that cover:
-  - character deletion cascade
-  - corporation deletion cascade
-  - cleanup of assets, jobs, and future blueprint rows
-- [x] Add regression tests for mixed ownership queries.
-  - Assets and blueprints should behave consistently for personal and corporation owners.
-- [x] Run focused test projects after each slice.
-- [x] Run a full `Release` solution build at the end of each milestone.
-
-## After The Foundation Tranche
-
-Only start the next UI-heavy slices after Milestones A-E are stable.
-
-Recommended follow-on order:
-
-1. Blueprint management and corporation blueprint views.
-2. Manufacturing tab.
-3. Upwell structure fitting and facility management.
-4. Market prices and update workflows.
-5. Shopping list.
-6. Mining and reprocessing screens.
+1. Settings refinements beyond the current shell status surface.
+2. Character and corporation management refinements beyond the current connect/refresh/default/remove workflow.
+3. Reassess startup/loading and update-distribution workflows after the remaining tabs are running.
