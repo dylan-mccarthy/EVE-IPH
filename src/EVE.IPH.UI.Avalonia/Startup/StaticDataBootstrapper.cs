@@ -36,21 +36,42 @@ public sealed class StaticDataBootstrapper
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
-    public async Task<StaticDataSettingsModel> EnsureStaticDataAsync(CancellationToken cancellationToken = default)
+    public async Task<StaticDataSettingsModel> EnsureStaticDataAsync(Action<string>? reportProgress = null, CancellationToken cancellationToken = default)
     {
         StaticDataSettingsModel settings = await LoadSettingsAsync(cancellationToken).ConfigureAwait(false);
+        bool hasRequiredStaticData = await HasRequiredStaticDataAsync(cancellationToken).ConfigureAwait(false);
 
-        if (settings.ImportedBuildNumber == settings.SupportedBuildNumber
-            && await HasRequiredStaticDataAsync(cancellationToken).ConfigureAwait(false))
+        if (settings.ImportedBuildNumber == settings.SupportedBuildNumber && hasRequiredStaticData)
         {
+            reportProgress?.Invoke($"Static data already available for build {settings.SupportedBuildNumber}.");
             return settings;
+        }
+
+        if (settings.ImportedBuildNumber is null && hasRequiredStaticData)
+        {
+            StaticDataSettingsModel updatedSettings = settings with
+            {
+                ImportedBuildNumber = settings.SupportedBuildNumber,
+                ImportedAtUtc = DateTimeOffset.UtcNow,
+            };
+
+            Result<bool> writeResult = await _settingsStore.WriteAsync(updatedSettings, cancellationToken).ConfigureAwait(false);
+            if (writeResult.IsFailure)
+            {
+                throw new InvalidOperationException(writeResult.Error.Message);
+            }
+
+            reportProgress?.Invoke($"Static data already existed locally; recorded supported build {settings.SupportedBuildNumber} in settings.");
+            return updatedSettings;
         }
 
         string archivePath = Path.Combine(Path.GetTempPath(), $"eve-iph-sde-{Guid.NewGuid():N}.zip");
 
         try
         {
+            reportProgress?.Invoke($"Downloading SDE archive for build {settings.SupportedBuildNumber}...");
             await DownloadArchiveAsync(settings.SourceArchiveUrl, archivePath, cancellationToken).ConfigureAwait(false);
+            reportProgress?.Invoke("Download complete. Importing static data into SQLite...");
 
             using FileStream archiveStream = File.OpenRead(archivePath);
             using ZipArchive archive = new(archiveStream, ZipArchiveMode.Read, leaveOpen: false);
@@ -63,6 +84,7 @@ public sealed class StaticDataBootstrapper
             }
 
             await ImportCoreStaticDataAsync(archive, cancellationToken).ConfigureAwait(false);
+            reportProgress?.Invoke("Static data import completed. Persisting imported build metadata...");
 
             StaticDataSettingsModel updatedSettings = settings with
             {
@@ -76,6 +98,7 @@ public sealed class StaticDataBootstrapper
                 throw new InvalidOperationException(writeResult.Error.Message);
             }
 
+            reportProgress?.Invoke($"Static data ready for build {archiveBuildNumber}.");
             return updatedSettings;
         }
         finally
@@ -142,7 +165,7 @@ public sealed class StaticDataBootstrapper
             using System.Data.IDbConnection connection = _connectionFactory.CreateConnection();
             connection.Open();
 
-            foreach (string tableName in new[] { "INVENTORY_TYPES", "ITEM_LOOKUP", "REGIONS", "SOLAR_SYSTEMS", "INDUSTRY_ACTIVITIES", "ALL_BLUEPRINTS_FACT", "ALL_BLUEPRINT_MATERIALS_FACT" })
+            foreach (string tableName in new[] { "INVENTORY_TYPES", "ITEM_LOOKUP", "REGIONS", "SOLAR_SYSTEMS", "STATIONS", "INDUSTRY_ACTIVITIES", "ALL_BLUEPRINTS_FACT", "ALL_BLUEPRINT_MATERIALS_FACT", "INDUSTRY_ACTIVITY_SKILLS" })
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -500,7 +523,8 @@ public sealed class StaticDataBootstrapper
             baseProductionTime.Value = blueprintFact.ManufacturingTime;
             blueprintCommand.ExecuteNonQuery();
 
-            foreach (BlueprintMaterialRow materialRow in ReadMaterialRows(currentBlueprintId, activities))
+            foreach (BlueprintMaterialRow materialRow in ReadMaterialRows(currentBlueprintId, activities)
+                         .DistinctBy(row => (row.BlueprintId, row.MaterialTypeId, row.ActivityId)))
             {
                 materialBlueprintId.Value = materialRow.BlueprintId;
                 materialId.Value = materialRow.MaterialTypeId;
@@ -509,7 +533,8 @@ public sealed class StaticDataBootstrapper
                 materialCommand.ExecuteNonQuery();
             }
 
-            foreach (BlueprintSkillRow skillRow in ReadSkillRows(currentBlueprintId, activities))
+            foreach (BlueprintSkillRow skillRow in ReadSkillRows(currentBlueprintId, activities)
+                         .DistinctBy(row => (row.BlueprintId, row.ActivityId, row.SkillTypeId)))
             {
                 skillBlueprintId.Value = skillRow.BlueprintId;
                 skillActivityId.Value = skillRow.ActivityId;
@@ -696,16 +721,22 @@ public sealed class StaticDataBootstrapper
             return null;
         }
 
-        JsonElement products = manufacturingActivity.GetProperty("products");
-        if (products.GetArrayLength() == 0)
+        if (!manufacturingActivity.TryGetProperty("products", out JsonElement products)
+            || products.ValueKind != JsonValueKind.Array
+            || products.GetArrayLength() == 0)
         {
             return null;
         }
 
         JsonElement firstProduct = products[0];
+        if (!TryReadInt32(firstProduct, "typeID", out int productTypeId))
+        {
+            return null;
+        }
+
         return new BlueprintFactRow(
             blueprintId,
-            firstProduct.GetProperty("typeID").GetInt32(),
+            productTypeId,
             TryGetInt32(manufacturingActivity, "time", 0));
     }
 
@@ -720,10 +751,16 @@ public sealed class StaticDataBootstrapper
 
             foreach (JsonElement material in materials.EnumerateArray())
             {
+                if (!TryReadInt32(material, "typeID", out int materialTypeId)
+                    || !TryReadInt32(material, "quantity", out int materialQuantity))
+                {
+                    continue;
+                }
+
                 yield return new BlueprintMaterialRow(
                     blueprintId,
-                    material.GetProperty("typeID").GetInt32(),
-                    material.GetProperty("quantity").GetInt32(),
+                    materialTypeId,
+                    materialQuantity,
                     (int)activityType);
             }
         }
@@ -740,13 +777,27 @@ public sealed class StaticDataBootstrapper
 
             foreach (JsonElement skill in skills.EnumerateArray())
             {
+                if (!TryReadInt32(skill, "typeID", out int skillTypeId)
+                    || !TryReadInt32(skill, "level", out int skillLevel))
+                {
+                    continue;
+                }
+
                 yield return new BlueprintSkillRow(
                     blueprintId,
                     (int)activityType,
-                    skill.GetProperty("typeID").GetInt32(),
-                    skill.GetProperty("level").GetInt32());
+                    skillTypeId,
+                    skillLevel);
             }
         }
+    }
+
+    private static bool TryReadInt32(JsonElement element, string propertyName, out int value)
+    {
+        value = default;
+        return element.TryGetProperty(propertyName, out JsonElement property)
+               && property.ValueKind == JsonValueKind.Number
+               && property.TryGetInt32(out value);
     }
 
     private static IEnumerable<(ActivityType ActivityType, JsonElement ActivityElement)> EnumerateActivities(JsonElement activities)

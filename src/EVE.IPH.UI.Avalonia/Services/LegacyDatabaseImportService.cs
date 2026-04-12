@@ -38,7 +38,7 @@ public sealed class LegacyDatabaseImportService : ILegacyDatabaseImportService
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
 
         LegacyDatabaseImportResult result = LegacyDatabaseImporter.Import(sourcePath);
-        await StartupOrchestrator.PrepareAsync(cancellationToken).ConfigureAwait(false);
+        await StartupOrchestrator.PrepareAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
         return new LegacyDatabaseImportScreenResult(sourcePath, result.DestinationPath, result.BackupPath);
     }

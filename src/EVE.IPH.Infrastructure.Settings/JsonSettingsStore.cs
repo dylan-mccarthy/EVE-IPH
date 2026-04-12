@@ -34,7 +34,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         try
         {
             await using FileStream stream = File.OpenRead(filePath);
-            T? result = await JsonSerializer.DeserializeAsync<T>(stream, SerializerOptions, cancellationToken);
+            T? result = await JsonSerializer.DeserializeAsync<T>(stream, SerializerOptions, cancellationToken).ConfigureAwait(false);
             return result is null ? Maybe<T>.None : Maybe<T>.Some(result);
         }
         catch (Exception ex) when (ex is JsonException or IOException)
@@ -54,7 +54,7 @@ public sealed class JsonSettingsStore : ISettingsStore
 
             await using (FileStream stream = new(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
             {
-                await JsonSerializer.SerializeAsync(stream, settings, SerializerOptions, cancellationToken);
+                await JsonSerializer.SerializeAsync(stream, settings, SerializerOptions, cancellationToken).ConfigureAwait(false);
             }
 
             File.Move(tempPath, filePath, overwrite: true);

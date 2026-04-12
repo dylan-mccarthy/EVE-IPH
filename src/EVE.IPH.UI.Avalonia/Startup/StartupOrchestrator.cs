@@ -21,15 +21,29 @@ internal static class StartupOrchestrator
     /// <c>BuildAvaloniaApp().StartWithClassicDesktopLifetime(args)</c> is called so that
     /// the database and schema are ready before services are resolved.
     /// </summary>
-    public static async Task PrepareAsync(CancellationToken cancellationToken = default)
+    public static async Task PrepareAsync(Action<string>? reportProgress = null, CancellationToken cancellationToken = default)
     {
         string dbPath = AppDatabasePath.GetCanonicalDatabasePath();
         string dbDirectory = Path.GetDirectoryName(dbPath)
             ?? throw new InvalidOperationException($"Cannot determine directory for database path '{dbPath}'.");
         string settingsDirectory = PlatformStoragePath.GetSettingsDirectory();
 
+        reportProgress?.Invoke($"Using database at '{dbPath}'.");
         Directory.CreateDirectory(dbDirectory);
         Directory.CreateDirectory(settingsDirectory);
+        reportProgress?.Invoke("Ensured application data directories exist.");
+
+        SqliteDatabaseRecoveryResult recoveryResult = SqliteDatabaseRecovery.EnsureUsableDatabaseFile(dbPath);
+        if (recoveryResult.InvalidFileWasQuarantined)
+        {
+            Console.Error.WriteLine(recoveryResult.RestoredFromBackup
+                ? $"Recovered invalid SQLite database file '{dbPath}' by quarantining '{recoveryResult.QuarantinedPath}' and restoring backup '{recoveryResult.RestoredBackupPath}'."
+                : $"Recovered invalid SQLite database file '{dbPath}' by quarantining '{recoveryResult.QuarantinedPath}'. A fresh database will be created on startup.");
+        }
+        else
+        {
+            reportProgress?.Invoke("Validated active SQLite database file.");
+        }
 
         // SQLite creates the file on first connection; the migration runner then applies
         // all pending scripts (including the initial schema) idempotently.
@@ -39,8 +53,12 @@ internal static class StartupOrchestrator
         StaticDataBootstrapper staticDataBootstrapper = new(settingsStore, connectionFactory, new HttpClient());
         DummyCharacterBootstrapper dummyCharacterBootstrapper = new(connectionFactory);
 
+        reportProgress?.Invoke("Applying database migrations...");
         await migrationRunner.RunAsync(cancellationToken).ConfigureAwait(false);
-        await staticDataBootstrapper.EnsureStaticDataAsync(cancellationToken).ConfigureAwait(false);
+        reportProgress?.Invoke("Ensuring static data is available...");
+        await staticDataBootstrapper.EnsureStaticDataAsync(reportProgress, cancellationToken).ConfigureAwait(false);
+        reportProgress?.Invoke("Ensuring fallback dummy character exists...");
         await dummyCharacterBootstrapper.EnsureDummyCharacterAsync(cancellationToken).ConfigureAwait(false);
+        reportProgress?.Invoke("Startup preparation finished.");
     }
 }

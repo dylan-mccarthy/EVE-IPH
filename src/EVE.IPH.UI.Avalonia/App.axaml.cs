@@ -27,16 +27,29 @@ public partial class App : Application
 {
     private static readonly ServiceProvider Services = ConfigureServices();
 
+    private static void ReportUiStartup(string message)
+    {
+        Console.Error.WriteLine($"[{DateTimeOffset.Now:HH:mm:ss}] {message}");
+    }
+
     public override void Initialize()
     {
+        ReportUiStartup("App.Initialize starting XAML load...");
         AvaloniaXamlLoader.Load(this);
+        ReportUiStartup("App.Initialize completed XAML load.");
     }
 
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = Services.GetRequiredService<MainWindow>();
+            Console.Error.WriteLine($"[{DateTimeOffset.Now:HH:mm:ss}] Resolving MainWindow from DI...");
+            MainWindow mainWindow = Services.GetRequiredService<MainWindow>();
+            Console.Error.WriteLine($"[{DateTimeOffset.Now:HH:mm:ss}] MainWindow resolved. Assigning desktop lifetime window...");
+            desktop.MainWindow = mainWindow;
+            Console.Error.WriteLine($"[{DateTimeOffset.Now:HH:mm:ss}] Explicitly showing and activating MainWindow...");
+            mainWindow.Show();
+            mainWindow.Activate();
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -44,25 +57,31 @@ public partial class App : Application
 
     private static ServiceProvider ConfigureServices()
     {
+        ReportUiStartup("Configuring DI services for Avalonia shell...");
         ServiceCollection services = new();
 
         // The StartupOrchestrator in Program.cs ensures the database exists and all
         // migrations have run before this method is called.
         string databasePath = AppDatabasePath.GetCanonicalDatabasePath();
         string settingsDirectory = PlatformStoragePath.GetSettingsDirectory();
+        ReportUiStartup($"Preparing settings store from '{settingsDirectory}'...");
         JsonSettingsStore settingsStore = new(settingsDirectory);
+        ReportUiStartup("Reading static data settings...");
         StaticDataSettingsModel staticDataSettings = settingsStore
             .ReadAsync<StaticDataSettingsModel>()
             .GetAwaiter()
             .GetResult()
             .GetValueOrDefault(new StaticDataSettingsModel());
+        ReportUiStartup("Reading application settings...");
         ApplicationSettingsModel applicationSettings = settingsStore
             .ReadAsync<ApplicationSettingsModel>()
             .GetAwaiter()
             .GetResult()
             .GetValueOrDefault(new ApplicationSettingsModel());
 
+        ReportUiStartup("Registering ESI infrastructure...");
         services.AddEsiInfrastructure();
+        ReportUiStartup("Registering domain, infrastructure, and screen services...");
 
         services.AddSingleton<IAssetSnapshotHydrator, AssetSnapshotHydrator>();
         services.AddSingleton<IAssetViewFilterService, AssetViewFilterService>();
@@ -103,6 +122,16 @@ public partial class App : Application
         services.AddSingleton<IMarketPriceSourcePreferenceProvider, UpdatePriceSettingsMarketPriceSourcePreferenceProvider>();
         services.AddSingleton<IMarketService, MarketService>();
         services.AddSingleton<BeltFlipCalculator>();
+        services.AddSingleton<ManufacturingPrerequisiteService>();
+        services.AddSingleton<ManufacturingFacilityUsageCalculator>();
+        services.AddSingleton<ManufacturingUsageAllocationCalculator>();
+        services.AddSingleton<ManufacturingSaleAdjustmentCalculator>();
+        services.AddSingleton<ManufacturingBuildBuyDecider>();
+        services.AddSingleton<ManufacturingActivityCalculator>();
+        services.AddSingleton<ComponentProductionScheduleCalculator>();
+        services.AddSingleton<ManufacturingCostCalculator>();
+        services.AddSingleton<ManufacturingTimelineCalculator>();
+        services.AddSingleton<ManufacturingProfitabilityCalculator>();
         services.AddSingleton<IManufacturingFacilityConfigurationService, ManufacturingFacilityConfigurationService>();
         services.AddSingleton<IOwnedBlueprintWorkflowService, OwnedBlueprintWorkflowService>();
         services.AddSingleton<ShoppingListAggregator>();
@@ -152,6 +181,9 @@ public partial class App : Application
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
 
-        return services.BuildServiceProvider();
+        ReportUiStartup("Building DI service provider...");
+        ServiceProvider provider = services.BuildServiceProvider();
+        ReportUiStartup("DI service provider created.");
+        return provider;
     }
 }

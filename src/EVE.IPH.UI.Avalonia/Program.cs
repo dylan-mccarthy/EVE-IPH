@@ -6,6 +6,9 @@ namespace EVE.IPH.UI.Avalonia;
 
 internal static class Program
 {
+    private static readonly Action<string> StartupStatusReporter = message =>
+        Console.Error.WriteLine($"[{DateTimeOffset.Now:HH:mm:ss}] {message}");
+
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.
@@ -18,7 +21,9 @@ internal static class Program
 
         // Ensure the user's app-data directory exists, create the SQLite database on
         // first run, and apply any pending schema migrations before the UI opens.
-        await StartupOrchestrator.PrepareAsync().ConfigureAwait(false);
+        StartupStatusReporter("Preparing startup prerequisites...");
+        await StartupOrchestrator.PrepareAsync(StartupStatusReporter).ConfigureAwait(false);
+        StartupStatusReporter("Startup prerequisites complete. Opening Avalonia window...");
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

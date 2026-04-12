@@ -76,6 +76,60 @@ public sealed class StaticDataBootstrapperTests : IDisposable
         result.ImportedBuildNumber.Should().Be(StaticDataSettingsModel.DefaultSupportedBuildNumber);
     }
 
+    [Fact]
+    public async Task EnsureStaticDataAsync_WhenStaticDataExistsButSettingsAreMissing_StampsVersionWithoutDownload()
+    {
+        IDbConnectionFactory connectionFactory = await CreateMigratedDatabaseAsync();
+        string initialSettingsDirectory = Path.Combine(_rootDirectory, "settings-initial");
+        JsonSettingsStore initialSettingsStore = new(initialSettingsDirectory);
+
+        StaticDataBootstrapper initialBootstrapper = new(initialSettingsStore, connectionFactory, new HttpClient(new CountingHttpMessageHandler(CreateArchiveBytes())));
+        await initialBootstrapper.EnsureStaticDataAsync();
+
+        string missingSettingsDirectory = Path.Combine(_rootDirectory, "settings-missing");
+        JsonSettingsStore missingSettingsStore = new(missingSettingsDirectory);
+        CountingHttpMessageHandler handler = new(CreateArchiveBytes());
+        StaticDataBootstrapper bootstrapper = new(missingSettingsStore, connectionFactory, new HttpClient(handler));
+
+        StaticDataSettingsModel result = await bootstrapper.EnsureStaticDataAsync();
+        Maybe<StaticDataSettingsModel> savedSettings = await missingSettingsStore.ReadAsync<StaticDataSettingsModel>();
+
+        handler.RequestCount.Should().Be(0);
+        result.ImportedBuildNumber.Should().Be(StaticDataSettingsModel.DefaultSupportedBuildNumber);
+        savedSettings.HasValue.Should().BeTrue();
+        savedSettings.Value.ImportedBuildNumber.Should().Be(StaticDataSettingsModel.DefaultSupportedBuildNumber);
+    }
+
+    [Fact]
+    public async Task EnsureStaticDataAsync_WhenArchiveContainsDuplicateSkillRows_DeduplicatesImport()
+    {
+        IDbConnectionFactory connectionFactory = await CreateMigratedDatabaseAsync();
+        JsonSettingsStore settingsStore = new(_settingsDirectory);
+        CountingHttpMessageHandler handler = new(CreateArchiveBytes(includeDuplicateSkill: true));
+        StaticDataBootstrapper bootstrapper = new(settingsStore, connectionFactory, new HttpClient(handler));
+
+        StaticDataSettingsModel result = await bootstrapper.EnsureStaticDataAsync();
+
+        handler.RequestCount.Should().Be(1);
+        result.ImportedBuildNumber.Should().Be(StaticDataSettingsModel.DefaultSupportedBuildNumber);
+        (await GetCountAsync(connectionFactory, "INDUSTRY_ACTIVITY_SKILLS")).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task EnsureStaticDataAsync_WhenBlueprintManufacturingProductsAreMissing_SkipsMalformedBlueprint()
+    {
+        IDbConnectionFactory connectionFactory = await CreateMigratedDatabaseAsync();
+        JsonSettingsStore settingsStore = new(_settingsDirectory);
+        CountingHttpMessageHandler handler = new(CreateArchiveBytes(includeMalformedManufacturingBlueprint: true));
+        StaticDataBootstrapper bootstrapper = new(settingsStore, connectionFactory, new HttpClient(handler));
+
+        StaticDataSettingsModel result = await bootstrapper.EnsureStaticDataAsync();
+
+        handler.RequestCount.Should().Be(1);
+        result.ImportedBuildNumber.Should().Be(StaticDataSettingsModel.DefaultSupportedBuildNumber);
+        (await GetCountAsync(connectionFactory, "ALL_BLUEPRINTS_FACT")).Should().Be(1);
+    }
+
     private async Task<IDbConnectionFactory> CreateMigratedDatabaseAsync()
     {
         Directory.CreateDirectory(_rootDirectory);
@@ -97,7 +151,7 @@ public sealed class StaticDataBootstrapperTests : IDisposable
         return Convert.ToInt64(result ?? 0);
     }
 
-    private static byte[] CreateArchiveBytes()
+    private static byte[] CreateArchiveBytes(bool includeDuplicateSkill = false, bool includeMalformedManufacturingBlueprint = false)
     {
         using MemoryStream stream = new();
         using (ZipArchive archive = new(stream, ZipArchiveMode.Create, leaveOpen: true))
@@ -109,7 +163,16 @@ public sealed class StaticDataBootstrapperTests : IDisposable
             AddEntry(archive, "mapRegions.jsonl", "{\"_key\":10000002,\"name\":{\"en\":\"The Forge\"}}\n");
             AddEntry(archive, "mapSolarSystems.jsonl", "{\"_key\":30000142,\"regionID\":10000002,\"securityStatus\":0.946,\"name\":{\"en\":\"Jita\"}}\n");
             AddEntry(archive, "npcStations.jsonl", "{\"_key\":60003760,\"solarSystemID\":30000142,\"typeID\":1531}\n");
-            AddEntry(archive, "blueprints.jsonl", "{\"_key\":681,\"activities\":{\"manufacturing\":{\"materials\":[{\"quantity\":86,\"typeID\":38}],\"products\":[{\"quantity\":1,\"typeID\":587}],\"skills\":[{\"level\":1,\"typeID\":3380}],\"time\":600},\"invention\":{\"materials\":[{\"quantity\":2,\"typeID\":20416}],\"products\":[{\"quantity\":1,\"typeID\":39581,\"probability\":0.3}],\"skills\":[{\"level\":1,\"typeID\":11442}],\"time\":63900},\"research_material\":{\"time\":210},\"research_time\":{\"time\":210}},\"blueprintTypeID\":681,\"maxProductionLimit\":300}\n");
+            string manufacturingSkills = includeDuplicateSkill
+                ? "[{\"level\":1,\"typeID\":3380},{\"level\":1,\"typeID\":3380}]"
+                : "[{\"level\":1,\"typeID\":3380}]";
+            string blueprintsContent = $"{{\"_key\":681,\"activities\":{{\"manufacturing\":{{\"materials\":[{{\"quantity\":86,\"typeID\":38}}],\"products\":[{{\"quantity\":1,\"typeID\":587}}],\"skills\":{manufacturingSkills},\"time\":600}},\"invention\":{{\"materials\":[{{\"quantity\":2,\"typeID\":20416}}],\"products\":[{{\"quantity\":1,\"typeID\":39581,\"probability\":0.3}}],\"skills\":[{{\"level\":1,\"typeID\":11442}}],\"time\":63900}},\"research_material\":{{\"time\":210}},\"research_time\":{{\"time\":210}}}},\"blueprintTypeID\":681,\"maxProductionLimit\":300}}\n";
+            if (includeMalformedManufacturingBlueprint)
+            {
+                blueprintsContent += "{\"_key\":682,\"activities\":{\"manufacturing\":{\"materials\":[{\"quantity\":1,\"typeID\":38}],\"skills\":[{\"level\":1,\"typeID\":3380}],\"time\":300}},\"blueprintTypeID\":682,\"maxProductionLimit\":1}\n";
+            }
+
+            AddEntry(archive, "blueprints.jsonl", blueprintsContent);
         }
 
         return stream.ToArray();
