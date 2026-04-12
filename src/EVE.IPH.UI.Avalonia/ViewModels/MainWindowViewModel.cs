@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using EVE.IPH.Domain.Core.Results;
 using EVE.IPH.Infrastructure.Settings.Models;
 using EVE.IPH.Infrastructure.Settings.Storage;
 using EVE.IPH.UI.Avalonia.Services;
@@ -10,10 +11,31 @@ public sealed class MainWindowViewModel : ObservableObject
 {
     private readonly IApplicationRestartService _applicationRestartService;
     private readonly ILegacyDatabaseImportService _legacyDatabaseImportService;
-    private readonly StaticDataSettingsModel _staticDataSettings;
+    private readonly ISettingsShellQueryService _settingsShellQueryService;
+    private readonly ISettingsShellCommandService _settingsShellCommandService;
+    private readonly IUpdateShellService _updateShellService;
     private string _legacyImportStatus = string.Empty;
     private string? _legacyImportSourcePath;
     private bool _restartRequired;
+    private string _databasePath = string.Empty;
+    private string _settingsStatusText = "Loading settings shell state...";
+    private string _onboardingStatusText = "Loading settings shell state...";
+    private string _updateStatusText = "Loading settings shell state...";
+    private long _supportedStaticDataBuild;
+    private string _importedStaticDataBuildText = "Not imported yet";
+    private string _staticDataSourceUrl = string.Empty;
+    private string _staticDataImportedAtText = "No import recorded yet";
+    private bool _checkForUpdatesOnStart;
+    private bool _loadAssetsOnStartup;
+    private bool _loadBlueprintsOnStartup;
+    private bool _loadMarketDataOnStartup;
+    private bool _loadSystemCostIndicesOnStartup;
+    private bool _loadPublicStructuresOnStartup;
+    private string _startupPreferencesStatusText = "Loading settings shell state...";
+    private bool _isSavingSettings;
+    private bool _isCheckingForUpdates;
+    private bool _updateChecksAvailable;
+    private bool _preparedUpdateReady;
 
     public MainWindowViewModel(
         CharacterManagementViewModel characterManagement,
@@ -28,7 +50,9 @@ public sealed class MainWindowViewModel : ObservableObject
         ResearchAgentsViewModel researchAgents,
         ILegacyDatabaseImportService legacyDatabaseImportService,
         IApplicationRestartService applicationRestartService,
-        StaticDataSettingsModel? staticDataSettings = null)
+        ISettingsShellQueryService settingsShellQueryService,
+        ISettingsShellCommandService settingsShellCommandService,
+        IUpdateShellService updateShellService)
     {
         CharacterManagement = characterManagement ?? throw new ArgumentNullException(nameof(characterManagement));
         Blueprints = blueprints ?? throw new ArgumentNullException(nameof(blueprints));
@@ -42,7 +66,9 @@ public sealed class MainWindowViewModel : ObservableObject
         ResearchAgents = researchAgents ?? throw new ArgumentNullException(nameof(researchAgents));
         _legacyDatabaseImportService = legacyDatabaseImportService ?? throw new ArgumentNullException(nameof(legacyDatabaseImportService));
         _applicationRestartService = applicationRestartService ?? throw new ArgumentNullException(nameof(applicationRestartService));
-        _staticDataSettings = staticDataSettings ?? new StaticDataSettingsModel();
+        _settingsShellQueryService = settingsShellQueryService ?? throw new ArgumentNullException(nameof(settingsShellQueryService));
+        _settingsShellCommandService = settingsShellCommandService ?? throw new ArgumentNullException(nameof(settingsShellCommandService));
+        _updateShellService = updateShellService ?? throw new ArgumentNullException(nameof(updateShellService));
 
         _legacyImportSourcePath = _legacyDatabaseImportService.GetDetectedLegacyDatabasePath();
         if (!string.IsNullOrWhiteSpace(_legacyImportSourcePath))
@@ -54,33 +80,141 @@ public sealed class MainWindowViewModel : ObservableObject
             _legacyImportStatus = "No legacy database was detected automatically. You can still browse to an older SQLite database and import it manually.";
         }
 
+        LoadTask = LoadSettingsShellAsync();
     }
+
+    public Task LoadTask { get; }
 
     public string Title => "EVE IPH Modern";
 
     public string Subtitle => "Phase 11 host with DI-backed shell services over the extracted domains, now including blueprint management, manufacturing, the first market/update workspace, shopping-list workflows, the first mining/reprocessing slice, and structure/facility-management workflows.";
 
-    public string DatabasePath => Path.GetFullPath(AppDatabasePath.GetCanonicalDatabasePath());
+    public string DatabasePath
+    {
+        get => _databasePath;
+        private set => SetProperty(ref _databasePath, value);
+    }
 
-    public string SettingsStatusText => "Import, onboarding, and update entry points are now routed through the Avalonia shell rather than ad hoc startup behavior.";
+    public string SettingsStatusText
+    {
+        get => _settingsStatusText;
+        private set => SetProperty(ref _settingsStatusText, value);
+    }
 
-    public string OnboardingStatusText => "The first-run onboarding dialog path is available for shell-driven prompts as Phase 11 expands.";
+    public string OnboardingStatusText
+    {
+        get => _onboardingStatusText;
+        private set => SetProperty(ref _onboardingStatusText, value);
+    }
 
-    public string UpdateStatusText => "Velopack bootstrap is in place. Update prompts should surface through the shell dialog service once check/apply flows are wired.";
+    public string UpdateStatusText
+    {
+        get => _updateStatusText;
+        private set => SetProperty(ref _updateStatusText, value);
+    }
 
-    public long SupportedStaticDataBuild => _staticDataSettings.SupportedBuildNumber;
+    public long SupportedStaticDataBuild
+    {
+        get => _supportedStaticDataBuild;
+        private set => SetProperty(ref _supportedStaticDataBuild, value);
+    }
 
-    public string ImportedStaticDataBuildText => _staticDataSettings.ImportedBuildNumber?.ToString() ?? "Not imported yet";
+    public string ImportedStaticDataBuildText
+    {
+        get => _importedStaticDataBuildText;
+        private set => SetProperty(ref _importedStaticDataBuildText, value);
+    }
 
-    public string StaticDataSourceUrl => _staticDataSettings.SourceArchiveUrl;
+    public string StaticDataSourceUrl
+    {
+        get => _staticDataSourceUrl;
+        private set => SetProperty(ref _staticDataSourceUrl, value);
+    }
 
-    public string StaticDataImportedAtText => _staticDataSettings.ImportedAtUtc?.ToString("u") ?? "No import recorded yet";
+    public string StaticDataImportedAtText
+    {
+        get => _staticDataImportedAtText;
+        private set => SetProperty(ref _staticDataImportedAtText, value);
+    }
+
+    public bool CheckForUpdatesOnStart
+    {
+        get => _checkForUpdatesOnStart;
+        set => SetProperty(ref _checkForUpdatesOnStart, value);
+    }
+
+    public bool LoadAssetsOnStartup
+    {
+        get => _loadAssetsOnStartup;
+        set => SetProperty(ref _loadAssetsOnStartup, value);
+    }
+
+    public bool LoadBlueprintsOnStartup
+    {
+        get => _loadBlueprintsOnStartup;
+        set => SetProperty(ref _loadBlueprintsOnStartup, value);
+    }
+
+    public bool LoadMarketDataOnStartup
+    {
+        get => _loadMarketDataOnStartup;
+        set => SetProperty(ref _loadMarketDataOnStartup, value);
+    }
+
+    public bool LoadSystemCostIndicesOnStartup
+    {
+        get => _loadSystemCostIndicesOnStartup;
+        set => SetProperty(ref _loadSystemCostIndicesOnStartup, value);
+    }
+
+    public bool LoadPublicStructuresOnStartup
+    {
+        get => _loadPublicStructuresOnStartup;
+        set => SetProperty(ref _loadPublicStructuresOnStartup, value);
+    }
+
+    public string StartupPreferencesStatusText
+    {
+        get => _startupPreferencesStatusText;
+        private set => SetProperty(ref _startupPreferencesStatusText, value);
+    }
+
+    public bool IsSavingSettings
+    {
+        get => _isSavingSettings;
+        private set
+        {
+            if (SetProperty(ref _isSavingSettings, value))
+            {
+                OnPropertyChanged(nameof(CanSaveStartupPreferences));
+            }
+        }
+    }
+
+    public bool CanSaveStartupPreferences => !IsSavingSettings;
+
+    public bool CanCheckForUpdates => _updateChecksAvailable && !IsCheckingForUpdates;
+
+    public bool CanApplyPreparedUpdate => _preparedUpdateReady && !IsCheckingForUpdates;
 
     public bool CanBrowseLegacyDatabase => !RestartRequired;
 
     public bool CanImportLegacyDatabase => !RestartRequired && !string.IsNullOrWhiteSpace(_legacyImportSourcePath);
 
     public string LegacyImportButtonText => CanImportLegacyDatabase ? "Import Legacy DB" : "No Legacy DB Detected";
+
+    public bool IsCheckingForUpdates
+    {
+        get => _isCheckingForUpdates;
+        private set
+        {
+            if (SetProperty(ref _isCheckingForUpdates, value))
+            {
+                OnPropertyChanged(nameof(CanCheckForUpdates));
+                OnPropertyChanged(nameof(CanApplyPreparedUpdate));
+            }
+        }
+    }
 
     public bool RestartRequired
     {
@@ -183,5 +317,110 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             return ex.Message;
         }
+    }
+
+    public async Task SaveStartupPreferencesAsync()
+    {
+        if (IsSavingSettings)
+        {
+            return;
+        }
+
+        try
+        {
+            IsSavingSettings = true;
+            Result<SettingsShellScreenData> result = await _settingsShellCommandService
+                .SaveStartupPreferencesAsync(new SettingsShellStartupPreferencesRequest(
+                    CheckForUpdatesOnStart,
+                    LoadAssetsOnStartup,
+                    LoadBlueprintsOnStartup,
+                    LoadMarketDataOnStartup,
+                    LoadSystemCostIndicesOnStartup,
+                    LoadPublicStructuresOnStartup))
+                .ConfigureAwait(false);
+
+            if (result.IsFailure)
+            {
+                StartupPreferencesStatusText = $"Unable to save startup preferences: {result.Error.Message}";
+                return;
+            }
+
+            ApplySettingsShellData(result.Value);
+        }
+        catch (Exception ex)
+        {
+            StartupPreferencesStatusText = $"Unable to save startup preferences: {ex.Message}";
+        }
+        finally
+        {
+            IsSavingSettings = false;
+        }
+    }
+
+    public async Task CheckForUpdatesAsync()
+    {
+        if (IsCheckingForUpdates)
+        {
+            return;
+        }
+
+        try
+        {
+            IsCheckingForUpdates = true;
+            UpdateStatusText = "Checking the configured release feed for updates...";
+            UpdateShellStatus status = await _updateShellService.CheckForUpdatesAsync().ConfigureAwait(false);
+            ApplyUpdateShellStatus(status);
+        }
+        catch (Exception ex)
+        {
+            UpdateStatusText = $"Unable to complete the update check: {ex.Message}";
+            _preparedUpdateReady = false;
+            OnPropertyChanged(nameof(CanApplyPreparedUpdate));
+        }
+        finally
+        {
+            IsCheckingForUpdates = false;
+        }
+    }
+
+    public void ApplyPreparedUpdateAndRestart()
+    {
+        UpdateShellStatus status = _updateShellService.ApplyPreparedUpdateAndRestart();
+        ApplyUpdateShellStatus(status);
+    }
+
+    private async Task LoadSettingsShellAsync()
+    {
+        SettingsShellScreenData screenData = await _settingsShellQueryService.GetScreenDataAsync().ConfigureAwait(false);
+        ApplySettingsShellData(screenData);
+        ApplyUpdateShellStatus(_updateShellService.GetCurrentStatus());
+    }
+
+    private void ApplySettingsShellData(SettingsShellScreenData screenData)
+    {
+        DatabasePath = screenData.DatabasePath;
+        SettingsStatusText = screenData.SettingsStatusText;
+        OnboardingStatusText = screenData.OnboardingStatusText;
+        UpdateStatusText = screenData.UpdateStatusText;
+        SupportedStaticDataBuild = screenData.SupportedStaticDataBuild;
+        ImportedStaticDataBuildText = screenData.ImportedStaticDataBuildText;
+        StaticDataSourceUrl = screenData.StaticDataSourceUrl;
+        StaticDataImportedAtText = screenData.StaticDataImportedAtText;
+        CheckForUpdatesOnStart = screenData.CheckForUpdatesOnStart;
+        LoadAssetsOnStartup = screenData.LoadAssetsOnStartup;
+        LoadBlueprintsOnStartup = screenData.LoadBlueprintsOnStartup;
+        LoadMarketDataOnStartup = screenData.LoadMarketDataOnStartup;
+        LoadSystemCostIndicesOnStartup = screenData.LoadSystemCostIndicesOnStartup;
+        LoadPublicStructuresOnStartup = screenData.LoadPublicStructuresOnStartup;
+        StartupPreferencesStatusText = screenData.StartupPreferencesStatusText;
+    }
+
+    private void ApplyUpdateShellStatus(UpdateShellStatus status)
+    {
+        UpdateStatusText = status.StatusText;
+        _updateChecksAvailable = status.CanCheckForUpdates;
+        _preparedUpdateReady = status.CanApplyPreparedUpdate;
+        OnPropertyChanged(nameof(CanCheckForUpdates));
+        OnPropertyChanged(nameof(CanApplyPreparedUpdate));
     }
 }

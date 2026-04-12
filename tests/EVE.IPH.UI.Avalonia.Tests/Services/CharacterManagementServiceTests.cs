@@ -304,6 +304,60 @@ public sealed class CharacterManagementServiceTests
     }
 
     [Fact]
+    public async Task GetScreenDataAsync_WhenRealCharacterTokenMissing_AppendsTokenWarningToStatusText()
+    {
+        ICharacterRepository characterRepository = Substitute.For<ICharacterRepository>();
+        ICorporationConnectionRepository corporationConnectionRepository = Substitute.For<ICorporationConnectionRepository>();
+        IEsiTokenStore tokenStore = Substitute.For<IEsiTokenStore>();
+
+        CharacterRecord character = CreateCharacter(new CharacterId(90000001), true);
+        characterRepository.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<CharacterRecord>>.Success([character])));
+        corporationConnectionRepository.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<CorporationConnectionRecord>>.Success([])));
+        tokenStore.ReadAsync(character.CharacterId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Maybe<EsiTokenRecord>.None));
+
+        CharacterManagementQueryService service = new(characterRepository, corporationConnectionRepository, tokenStore);
+
+        Result<CharacterManagementScreenData> result = await service.GetScreenDataAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.StatusText.Should().Contain("Token status warning: 1 connected character needs re-authentication.");
+    }
+
+    [Fact]
+    public async Task GetScreenDataAsync_WhenCorporationHasNoScopedAccess_AppendsCorporationWarningToStatusText()
+    {
+        ICharacterRepository characterRepository = Substitute.For<ICharacterRepository>();
+        ICorporationConnectionRepository corporationConnectionRepository = Substitute.For<ICorporationConnectionRepository>();
+        IEsiTokenStore tokenStore = Substitute.For<IEsiTokenStore>();
+
+        CharacterId characterId = new(90000001);
+        CharacterRecord character = CreateCharacter(characterId, true);
+        CorporationConnectionRecord corporation = new(new CorporationId(98000001), "Acme Holdings", characterId, false, false, false);
+
+        characterRepository.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<CharacterRecord>>.Success([character])));
+        corporationConnectionRepository.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result<IReadOnlyList<CorporationConnectionRecord>>.Success([corporation])));
+        tokenStore.ReadAsync(characterId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Maybe<EsiTokenRecord>.Some(new EsiTokenRecord(
+                "access",
+                "refresh",
+                DateTimeOffset.UtcNow.AddMinutes(30),
+                ["esi-skills.read_skills.v1"],
+                Maybe<CharacterId>.Some(characterId)))));
+
+        CharacterManagementQueryService service = new(characterRepository, corporationConnectionRepository, tokenStore);
+
+        Result<CharacterManagementScreenData> result = await service.GetScreenDataAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.StatusText.Should().Contain("Corporation access warning: 1 corporation connection has no scoped access yet.");
+    }
+
+    [Fact]
     public async Task ConnectCorporationAsync_WhenMembershipScopeMissing_ReturnsFailure()
     {
         ICharacterRepository characterRepository = Substitute.For<ICharacterRepository>();

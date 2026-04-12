@@ -131,13 +131,35 @@
               <StackPanel Spacing="8">
                 <TextBlock FontSize="18" FontWeight="SemiBold" Text="Startup and Updates" />
                 <TextBlock Opacity="0.8" TextWrapping="Wrap" Text="{Binding OnboardingStatusText}" />
+              <CheckBox Content="Check for updates on startup"
+                  IsChecked="{Binding CheckForUpdatesOnStart}" />
+              <CheckBox Content="Load assets on startup"
+                  IsChecked="{Binding LoadAssetsOnStartup}" />
+              <CheckBox Content="Load blueprints on startup"
+                  IsChecked="{Binding LoadBlueprintsOnStartup}" />
+              <CheckBox Content="Load market data on startup"
+                  IsChecked="{Binding LoadMarketDataOnStartup}" />
+              <CheckBox Content="Load system cost indices on startup"
+                  IsChecked="{Binding LoadSystemCostIndicesOnStartup}" />
+              <CheckBox Content="Load public structures on startup"
+                  IsChecked="{Binding LoadPublicStructuresOnStartup}" />
+              <TextBlock Opacity="0.8" TextWrapping="Wrap" Text="{Binding StartupPreferencesStatusText}" />
+              <Button HorizontalAlignment="Left"
+                Content="Save Startup Preferences"
+                Click="SaveStartupPreferences_Click"
+                IsEnabled="{Binding CanSaveStartupPreferences}" />
                 <Button HorizontalAlignment="Left"
                         Content="Show Onboarding Dialog"
                         Click="ShowFirstRunOnboarding_Click" />
                 <TextBlock Opacity="0.8" TextWrapping="Wrap" Text="{Binding UpdateStatusText}" />
                 <Button HorizontalAlignment="Left"
-                        Content="Show Update Dialog"
-                        Click="ShowUpdatePlaceholder_Click" />
+                  Content="Check for Updates Now"
+                  Click="CheckForUpdates_Click"
+                  IsEnabled="{Binding CanCheckForUpdates}" />
+                <Button HorizontalAlignment="Left"
+                  Content="Restart to Apply Downloaded Update"
+                  Click="ApplyPreparedUpdate_Click"
+                  IsVisible="{Binding CanApplyPreparedUpdate}" />
               </StackPanel>
             </Border>
           </StackPanel>

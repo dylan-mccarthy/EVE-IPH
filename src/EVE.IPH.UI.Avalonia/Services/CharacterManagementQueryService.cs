@@ -50,14 +50,13 @@ public sealed class CharacterManagementQueryService(
                 characterNames.GetValueOrDefault(corporation.AuthorizedCharacterId.Value, $"Character {corporation.AuthorizedCharacterId.Value}")))
             .ToArray();
 
-        string? tokenStatusError = characters.Any(character => !character.TokenStatus.HasStoredToken)
-            ? null
-            : null;
+        string? tokenStatusWarning = BuildTokenStatusWarning(characters);
+        string? corporationAccessWarning = BuildCorporationAccessWarning(corporations);
 
         return Result<CharacterManagementScreenData>.Success(new CharacterManagementScreenData(
             characters,
             corporations,
-            BuildStatusText(characters, corporations, tokenStatusError)));
+            BuildStatusText(characters, corporations, tokenStatusWarning, corporationAccessWarning)));
     }
 
     private static CharacterTokenStatus BuildTokenStatus(CharacterId characterId, Maybe<EsiTokenRecord> token, DateTimeOffset now)
@@ -78,7 +77,8 @@ public sealed class CharacterManagementQueryService(
     private static string BuildStatusText(
         IReadOnlyList<CharacterManagementCharacterRow> characters,
         IReadOnlyList<CharacterManagementCorporationRow> corporations,
-        string? tokenStatusError)
+        string? tokenStatusWarning,
+        string? corporationAccessWarning)
     {
         if (characters.Count == 0)
         {
@@ -97,8 +97,49 @@ public sealed class CharacterManagementQueryService(
             ? $"Loaded {characters.Count} stored character(s), including the generated All Skills V placeholder, and {corporations.Count} corporation connection(s)."
             : $"Loaded {characters.Count} stored character(s) and {corporations.Count} corporation connection(s).";
 
-        return string.IsNullOrWhiteSpace(tokenStatusError)
+        List<string> warnings = [];
+
+        if (!string.IsNullOrWhiteSpace(tokenStatusWarning))
+        {
+            warnings.Add($"Token status warning: {tokenStatusWarning}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(corporationAccessWarning))
+        {
+            warnings.Add($"Corporation access warning: {corporationAccessWarning}");
+        }
+
+        return warnings.Count == 0
             ? summary
-            : $"{summary} Token status warning: {tokenStatusError}";
+            : $"{summary} {string.Join(" ", warnings)}";
+    }
+
+    private static string? BuildTokenStatusWarning(IReadOnlyList<CharacterManagementCharacterRow> characters)
+    {
+        int needsReconnectCount = characters.Count(character =>
+            !SpecialCharacters.IsAllSkillsV(character.Character.CharacterId) &&
+            (!character.TokenStatus.HasStoredToken || character.TokenStatus.IsExpired));
+
+        return needsReconnectCount switch
+        {
+            0 => null,
+            1 => "1 connected character needs re-authentication.",
+            _ => $"{needsReconnectCount} connected characters need re-authentication.",
+        };
+    }
+
+    private static string? BuildCorporationAccessWarning(IReadOnlyList<CharacterManagementCorporationRow> corporations)
+    {
+        int noScopedAccessCount = corporations.Count(corporation =>
+            !corporation.Corporation.HasAssetAccess &&
+            !corporation.Corporation.HasIndustryJobAccess &&
+            !corporation.Corporation.HasBlueprintAccess);
+
+        return noScopedAccessCount switch
+        {
+            0 => null,
+            1 => "1 corporation connection has no scoped access yet.",
+            _ => $"{noScopedAccessCount} corporation connections have no scoped access yet.",
+        };
     }
 }

@@ -139,13 +139,33 @@ public partial class MainWindow : Window
         await _shellDialogService.ShowFirstRunOnboardingAsync(this);
     }
 
-    private async void ShowUpdatePlaceholder_Click(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
+    private async void CheckForUpdates_Click(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
     {
-        if (_shellDialogService is null)
+        if (_viewModel is null)
         {
             return;
         }
 
-        await _shellDialogService.ShowUpdatePlaceholderAsync(this);
+        await _viewModel.CheckForUpdatesAsync();
+    }
+
+    private void ApplyPreparedUpdate_Click(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        _viewModel.ApplyPreparedUpdateAndRestart();
+    }
+
+    private async void SaveStartupPreferences_Click(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        await _viewModel.SaveStartupPreferencesAsync();
     }
 }

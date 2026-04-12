@@ -141,6 +141,9 @@ public partial class App : Application
         services.AddSingleton<IPhase11SampleDataProvider, Phase11SampleDataProvider>();
         services.AddSingleton<IApplicationRestartService, ApplicationRestartService>();
         services.AddSingleton<IModalDialogService, ModalDialogService>();
+        services.AddSingleton<ISettingsShellQueryService, SettingsShellQueryService>();
+        services.AddSingleton<ISettingsShellCommandService, SettingsShellCommandService>();
+        services.AddSingleton<IUpdateShellService, UpdateShellService>();
         services.AddSingleton<ICharacterManagementQueryService, CharacterManagementQueryService>();
         services.AddSingleton<ICharacterManagementCommandService, CharacterManagementService>();
         services.AddSingleton<IBlueprintManagementQueryService, BlueprintManagementQueryService>();

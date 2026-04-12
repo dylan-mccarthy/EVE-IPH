@@ -8,9 +8,9 @@ using EVE.IPH.Domain.Core.Results;
 using EVE.IPH.Domain.Industry.Models;
 using EVE.IPH.UI.Avalonia.Services;
 using EVE.IPH.UI.Avalonia.ViewModels;
+using EVE.IPH.Infrastructure.Settings.Models;
 using NSubstitute;
 
-using EVE.IPH.Infrastructure.Settings.Models;
 namespace EVE.IPH.UI.Avalonia.Tests.ViewModels;
 
 public sealed class MainWindowViewModelTests
@@ -27,6 +27,7 @@ public sealed class MainWindowViewModelTests
         viewModel.LegacyImportSourcePath.Should().Be("C:\\legacy\\EVEIPH DB.sqlite");
         viewModel.SupportedStaticDataBuild.Should().Be(3294658);
         viewModel.ImportedStaticDataBuildText.Should().Be("3294658");
+        viewModel.CheckForUpdatesOnStart.Should().BeTrue();
         viewModel.LegacyImportStatus.Should().Contain("Legacy database detected");
     }
 
@@ -105,11 +106,110 @@ public sealed class MainWindowViewModelTests
         error.Should().Be("restart failed");
     }
 
+    [Fact]
+    public async Task SaveStartupPreferencesAsync_WhenSuccessful_UpdatesPersistedShellState()
+    {
+        ILegacyDatabaseImportService importService = Substitute.For<ILegacyDatabaseImportService>();
+        ISettingsShellCommandService commandService = Substitute.For<ISettingsShellCommandService>();
+        commandService.SaveStartupPreferencesAsync(Arg.Any<SettingsShellStartupPreferencesRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Result<SettingsShellScreenData>.Success(CreateSettingsShellScreenData(new ApplicationSettingsModel
+            {
+                CheckForUpdatesOnStart = false,
+                LoadAssetsOnStartup = false,
+                LoadBpsOnStartup = true,
+                LoadEsiMarketDataOnStartup = false,
+                LoadEsiSystemCostIndicesOnStartup = true,
+                LoadEsiPublicStructuresOnStartup = false,
+            })));
+
+        MainWindowViewModel viewModel = await CreateViewModelAsync(importService, Substitute.For<IApplicationRestartService>(), commandService: commandService);
+        viewModel.CheckForUpdatesOnStart = false;
+        viewModel.LoadAssetsOnStartup = false;
+        viewModel.LoadBlueprintsOnStartup = true;
+        viewModel.LoadMarketDataOnStartup = false;
+        viewModel.LoadSystemCostIndicesOnStartup = true;
+        viewModel.LoadPublicStructuresOnStartup = false;
+
+        await viewModel.SaveStartupPreferencesAsync();
+
+        viewModel.StartupPreferencesStatusText.Should().Contain("startup preference");
+        await commandService.Received(1).SaveStartupPreferencesAsync(
+            Arg.Is<SettingsShellStartupPreferencesRequest>(request =>
+                !request.CheckForUpdatesOnStart &&
+                !request.LoadAssetsOnStartup &&
+                request.LoadBlueprintsOnStartup &&
+                !request.LoadMarketDataOnStartup &&
+                request.LoadSystemCostIndicesOnStartup &&
+                !request.LoadPublicStructuresOnStartup),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CheckForUpdatesAsync_WhenUpdateIsReady_UpdatesShellStatus()
+    {
+        ILegacyDatabaseImportService importService = Substitute.For<ILegacyDatabaseImportService>();
+        IUpdateShellService updateShellService = Substitute.For<IUpdateShellService>();
+        updateShellService.GetCurrentStatus().Returns(new UpdateShellStatus(
+            "Shell-driven update checks are available for this packaged install. Current version: 1.0.0.",
+            CanCheckForUpdates: true,
+            CanApplyPreparedUpdate: false));
+        updateShellService.CheckForUpdatesAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(new UpdateShellStatus(
+            "Update 1.1.0 has been downloaded and is ready to apply. Restart from the shell to finish installing it.",
+            CanCheckForUpdates: true,
+            CanApplyPreparedUpdate: true)));
+
+        MainWindowViewModel viewModel = await CreateViewModelAsync(
+            importService,
+            Substitute.For<IApplicationRestartService>(),
+            updateShellService: updateShellService);
+
+        await viewModel.CheckForUpdatesAsync();
+
+        viewModel.UpdateStatusText.Should().Contain("1.1.0");
+        viewModel.CanApplyPreparedUpdate.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ApplyPreparedUpdateAndRestart_WhenServiceReturnsFailureStatus_UpdatesShellMessage()
+    {
+        ILegacyDatabaseImportService importService = Substitute.For<ILegacyDatabaseImportService>();
+        IUpdateShellService updateShellService = Substitute.For<IUpdateShellService>();
+        updateShellService.GetCurrentStatus().Returns(new UpdateShellStatus(
+            "Update 1.1.0 has been downloaded and is ready to apply. Restart from the shell to finish installing it.",
+            CanCheckForUpdates: true,
+            CanApplyPreparedUpdate: true));
+        updateShellService.ApplyPreparedUpdateAndRestart().Returns(new UpdateShellStatus(
+            "Unable to apply the downloaded update automatically: restart helper missing",
+            CanCheckForUpdates: true,
+            CanApplyPreparedUpdate: true));
+
+        MainWindowViewModel viewModel = await CreateViewModelAsync(
+            importService,
+            Substitute.For<IApplicationRestartService>(),
+            updateShellService: updateShellService);
+
+        viewModel.ApplyPreparedUpdateAndRestart();
+
+        viewModel.UpdateStatusText.Should().Contain("restart helper missing");
+        viewModel.CanApplyPreparedUpdate.Should().BeTrue();
+    }
+
     private static async Task<MainWindowViewModel> CreateViewModelAsync(
         ILegacyDatabaseImportService importService,
-        IApplicationRestartService restartService)
+        IApplicationRestartService restartService,
+        ISettingsShellQueryService? queryService = null,
+        ISettingsShellCommandService? commandService = null,
+        IUpdateShellService? updateShellService = null)
     {
         importService.GetDetectedLegacyDatabasePath().Returns(importService.GetDetectedLegacyDatabasePath());
+        queryService ??= Substitute.For<ISettingsShellQueryService>();
+        commandService ??= Substitute.For<ISettingsShellCommandService>();
+        updateShellService ??= Substitute.For<IUpdateShellService>();
+        queryService.GetScreenDataAsync(Arg.Any<CancellationToken>()).Returns(CreateSettingsShellScreenData(new ApplicationSettingsModel()));
+        updateShellService.GetCurrentStatus().Returns(new UpdateShellStatus(
+            "Shell-driven update checks are available for this packaged install. Current version: 1.0.0.",
+            CanCheckForUpdates: true,
+            CanApplyPreparedUpdate: false));
 
         CharacterManagementViewModel characterManagement = await CreateCharacterManagementViewModelAsync();
         BlueprintManagementViewModel blueprints = await CreateBlueprintManagementViewModelAsync();
@@ -135,13 +235,30 @@ public sealed class MainWindowViewModelTests
             researchAgents,
             importService,
             restartService,
-            new StaticDataSettingsModel
-            {
-                SupportedBuildNumber = 3294658,
-                ImportedBuildNumber = 3294658,
-                ImportedAtUtc = new DateTimeOffset(2026, 4, 12, 0, 0, 0, TimeSpan.Zero),
-            });
+            queryService,
+                commandService,
+                updateShellService);
     }
+
+    private static SettingsShellScreenData CreateSettingsShellScreenData(ApplicationSettingsModel settings) => new(
+        "C:\\Users\\tester\\AppData\\Roaming\\EVE-IPH\\EVEIPH DB.sqlite",
+        "Database import, startup loading preferences, and update-check behavior are now backed by persisted shell settings instead of placeholder status text.",
+        "Startup data loading is configured from the persisted application settings below. The onboarding dialog remains available from the shell for first-run guidance.",
+        settings.CheckForUpdatesOnStart
+            ? "Automatic update checks on startup are enabled in the persisted application settings. Velopack bootstrap is live; richer update workflows still follow later milestones."
+            : "Automatic update checks on startup are disabled in the persisted application settings. Velopack bootstrap remains wired, but shell-driven check/apply flows are still deferred.",
+        3294658,
+        "3294658",
+        "https://developers.eveonline.com/static-data/tranquility/eve-online-static-data-3294658-jsonl.zip",
+        "2026-04-12 00:00:00Z",
+        settings.CheckForUpdatesOnStart,
+        settings.LoadAssetsOnStartup,
+        settings.LoadBpsOnStartup,
+        settings.LoadEsiMarketDataOnStartup,
+        settings.LoadEsiSystemCostIndicesOnStartup,
+        settings.LoadEsiPublicStructuresOnStartup,
+        "4 startup preferences currently enabled. Save changes here to persist how much shell data should preload on startup.",
+        settings);
 
     private static async Task<CharacterManagementViewModel> CreateCharacterManagementViewModelAsync()
     {
