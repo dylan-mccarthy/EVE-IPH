@@ -55,6 +55,34 @@ Centralize the state used by `frmResearchAgents`:
 - valuing datacores from cached market prices
 - calculating total current datacore value
 
+### `SettingsService` and `SettingsViewModel`
+
+Centralize the editable application-settings state used by `frmSettings`:
+
+- translating `ApplicationSettings` into UI-ready state
+- translating edited UI state back into `ApplicationSettings`
+- resolving implant selections and default-value presentation outside the form
+
+### `AssetsViewerService` and `AssetsViewerViewModel`
+
+Centralize part of the state used by `frmAssetsViewer`:
+
+- translating `AssetWindowSettings` into UI-ready state
+- translating edited UI state back into `AssetWindowSettings`
+- loading account-list rows for multi-account asset selection
+- building refresh requests that combine:
+  - selected character entries
+  - sort mode
+  - item search/filter lists
+  - blueprint-copy-only filtering
+- building the asset-tree node list by coordinating:
+  - character loading for selected accounts
+  - saved asset-location lookup
+  - personal asset node generation
+  - corporation asset node generation
+- saving checked asset locations back to `ASSET_LOCATIONS`
+- loading ship-type and charge-type lookup values for the filter combos
+
 ## Transitional State
 
 This codebase still contains legacy global helpers in `Globals.vb`.

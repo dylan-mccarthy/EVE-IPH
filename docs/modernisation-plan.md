@@ -21,6 +21,8 @@
 - Added `CharacterMenuService` and `CharacterMenuViewModel` to separate character menu state from `frmMain` rendering.
 - Added `ManageAccountsService` and `ManageAccountsViewModel` so account-grid loading, role lookup, token refresh, and delete workflows are no longer composed inside `frmManageAccounts`.
 - Added `ResearchAgentsService` and `ResearchAgentsViewModel` so datacore valuation and row-shaping logic are no longer composed inside `frmResearchAgents`.
+- Added `SettingsService` and `SettingsViewModel` so application-settings mapping is no longer composed directly inside `frmSettings`.
+- Added `AssetsViewerService` and `AssetsViewerViewModel` so asset-window settings mapping, account-list loading, selected-asset-entry loading, search/filter request building, asset-tree node orchestration, checked-location persistence, and price-type lookup loading are no longer composed directly inside `frmAssetsViewer`.
 - Started moving modernized backend code into dedicated folders:
   - `Services/`
   - `ViewModels/`
@@ -46,10 +48,10 @@
 ## Next Refactor Candidates
 
 1. Extract character menu/list population into a reusable service + view model.
-2. Introduce view models for:
+2. Continue extracting the remaining tree-building and DB-heavy seams from:
    - Blueprint Management
    - Assets Viewer
-   - Settings screens with larger editable state
+   - remaining settings screens with larger editable state
 3. Move DB query composition out of forms and into repository-style classes.
 4. Replace global workflow helpers in `Globals.vb` with service calls until `Globals.vb` becomes mostly utility code.
 5. Add tests around service-layer behavior where practical.

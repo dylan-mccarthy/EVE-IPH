@@ -12,67 +12,58 @@ Public Class frmSettings
 
     Private Defaults As New ProgramSettings ' For default constants
 
+    Private Sub MarkDirty()
+        btnSave.Text = "Save"
+    End Sub
+
+    Private Sub ToggleComboBoxSetting(toggle As CheckBox, comboBox As ComboBox, defaultText As String)
+        If Not FirstLoad Then
+            If toggle.Checked Then
+                comboBox.Enabled = True
+                comboBox.Text = defaultText
+            Else
+                comboBox.Enabled = False
+                comboBox.Text = ""
+            End If
+        End If
+
+        MarkDirty()
+    End Sub
+
+    Private Sub ToggleTextBoxSetting(toggle As CheckBox, textBox As TextBox, defaultValue As String, focusWhenEnabled As Boolean)
+        If toggle.Checked Then
+            textBox.Enabled = True
+            If focusWhenEnabled Then
+                textBox.Focus()
+            End If
+        Else
+            textBox.Enabled = False
+            textBox.Text = defaultValue
+        End If
+
+        MarkDirty()
+    End Sub
+
 #Region "Click object Functions"
 
     Private Sub chkBeanCounterManufacturing_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles chkBeanCounterManufacturing.CheckedChanged
-        If Not FirstLoad Then
-            If chkBeanCounterManufacturing.Checked Then
-                cmbBeanCounterManufacturing.Enabled = True
-                cmbBeanCounterManufacturing.Text = "Zainou 'Beancounter' Industry BX-802"
-            Else
-                cmbBeanCounterManufacturing.Enabled = False
-                cmbBeanCounterManufacturing.Text = ""
-            End If
-        End If
-        btnSave.Text = "Save"
+        ToggleComboBoxSetting(chkBeanCounterManufacturing, cmbBeanCounterManufacturing, "Zainou 'Beancounter' Industry BX-802")
     End Sub
 
     Private Sub chkBeanCounterRefining_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles chkBeanCounterRefining.CheckedChanged
-        If Not FirstLoad Then
-            If chkBeanCounterRefining.Checked Then
-                cmbBeanCounterRefining.Enabled = True
-                cmbBeanCounterRefining.Text = "Zainou 'Beancounter' Reprocessing RX-802"
-            Else
-                cmbBeanCounterRefining.Enabled = False
-                cmbBeanCounterRefining.Text = ""
-            End If
-        End If
-        btnSave.Text = "Save"
+        ToggleComboBoxSetting(chkBeanCounterRefining, cmbBeanCounterRefining, "Zainou 'Beancounter' Reprocessing RX-802")
     End Sub
 
     Private Sub chkBeanCounterCopy_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles chkBeanCounterCopy.CheckedChanged
-        If Not FirstLoad Then
-            If chkBeanCounterCopy.Checked Then
-                cmbBeanCounterCopy.Enabled = True
-                cmbBeanCounterCopy.Text = "Zainou 'Beancounter' Science SC-803"
-            Else
-                cmbBeanCounterCopy.Enabled = False
-                cmbBeanCounterCopy.Text = ""
-            End If
-        End If
-        btnSave.Text = "Save"
+        ToggleComboBoxSetting(chkBeanCounterCopy, cmbBeanCounterCopy, "Zainou 'Beancounter' Science SC-803")
     End Sub
 
     Private Sub chkBrokerCorpStanding_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles chkBrokerCorpStanding.CheckedChanged
-        If chkBrokerCorpStanding.Checked = True Then
-            txtBrokerCorpStanding.Enabled = True
-            txtBrokerCorpStanding.Focus()
-        Else
-            txtBrokerCorpStanding.Enabled = False
-            txtBrokerCorpStanding.Text = FormatNumber(Defaults.DefaultBrokerCorpStanding, 2)
-        End If
-        btnSave.Text = "Save"
+        ToggleTextBoxSetting(chkBrokerCorpStanding, txtBrokerCorpStanding, FormatNumber(Defaults.DefaultBrokerCorpStanding, 2), True)
     End Sub
 
     Private Sub chkBrokerFactionStanding_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles chkBrokerFactionStanding.CheckedChanged
-        If chkBrokerFactionStanding.Checked = True Then
-            txtBrokerFactionStanding.Enabled = True
-            txtBrokerFactionStanding.Focus()
-        Else
-            txtBrokerFactionStanding.Enabled = False
-            txtBrokerFactionStanding.Text = FormatNumber(Defaults.DefaultBrokerFactionStanding, 2)
-        End If
-        btnSave.Text = "Save"
+        ToggleTextBoxSetting(chkBrokerFactionStanding, txtBrokerFactionStanding, FormatNumber(Defaults.DefaultBrokerFactionStanding, 2), True)
     End Sub
 
     Private Sub txtEVEMarketerInterval_KeyPress(sender As Object, e As System.Windows.Forms.KeyPressEventArgs) Handles txtFuzzworksMarketInterval.KeyPress
@@ -117,64 +108,43 @@ Public Class frmSettings
     End Sub
 
     Private Sub chkShowToolTips_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles chkShowToolTips.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkCheckUpdatesStartup_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles chkCheckUpdatesStartup.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkBuildBuyDefault_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles chkBuildBuyDefault.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkDefaultME_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles chkDefaultME.CheckedChanged
-        If chkDefaultME.Checked = True Then
-            txtDefaultME.Enabled = True
-            txtDefaultME.Focus()
-        Else
-            txtDefaultME.Enabled = False
-            txtDefaultME.Text = FormatNumber(Defaults.DefaultSettingME, 0)
-        End If
-        btnSave.Text = "Save"
+        ToggleTextBoxSetting(chkDefaultME, txtDefaultME, FormatNumber(Defaults.DefaultSettingME, 0), True)
     End Sub
 
     Private Sub chkEVEMarketerInterval_CheckedChanged(sender As System.Object, e As System.EventArgs) Handles chkFuzzworksMarketInterval.CheckedChanged
-        If chkFuzzworksMarketInterval.Checked = True Then
-            txtFuzzworksMarketInterval.Enabled = True
-            txtFuzzworksMarketInterval.Focus()
-        Else
-            txtFuzzworksMarketInterval.Enabled = False
-            txtFuzzworksMarketInterval.Text = FormatNumber(Defaults.DefaultUpdatePricesRefreshInterval, 0)
-        End If
-        btnSave.Text = "Save"
+        ToggleTextBoxSetting(chkFuzzworksMarketInterval, txtFuzzworksMarketInterval, FormatNumber(Defaults.DefaultUpdatePricesRefreshInterval, 0), True)
     End Sub
 
     Private Sub chkDefaultPE_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles chkDefaultTE.CheckedChanged
-        If chkDefaultTE.Checked = True Then
-            txtDefaultTE.Enabled = True
-            txtDefaultTE.Focus()
-        Else
-            txtDefaultTE.Enabled = False
-            txtDefaultTE.Text = FormatNumber(Defaults.DefaultSettingTE, 0)
-        End If
-        btnSave.Text = "Save"
+        ToggleTextBoxSetting(chkDefaultTE, txtDefaultTE, FormatNumber(Defaults.DefaultSettingTE, 0), True)
     End Sub
 
     Private Sub chkDisableSVR_CheckedChanged(sender As System.Object, e As System.EventArgs) Handles chkDisableSVR.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkDisableSound_CheckedChanged(sender As Object, e As EventArgs) Handles chkDisableSound.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkSaveFacilitiesbyChar_CheckedChanged(sender As Object, e As EventArgs) Handles chkSaveFacilitiesbyChar.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkLoadBPsbyChar_CheckedChanged(sender As Object, e As EventArgs) Handles chkLoadBPsbyChar.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub cmbRefineTax_KeyPress(sender As Object, e As System.Windows.Forms.KeyPressEventArgs)
@@ -188,39 +158,39 @@ Public Class frmSettings
     End Sub
 
     Private Sub chkRefreshMarketDataonStartup_CheckedChanged(sender As System.Object, e As System.EventArgs) Handles chkRefreshMarketDataonStartup.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkRefreshFacilityDataonStartup_CheckedChanged(sender As System.Object, e As System.EventArgs) Handles chkRefreshSystemCostIndiciesDataonStartup.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub rbtnExportDefault_CheckedChanged(sender As System.Object, e As System.EventArgs) Handles rbtnExportDefault.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub rbtnExportCSV_CheckedChanged(sender As System.Object, e As System.EventArgs) Handles rbtnExportCSV.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub rbtnExportSSV_CheckedChanged(sender As System.Object, e As System.EventArgs) Handles rbtnExportSSV.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkSaveBPRelicsDecryptors_CheckedChanged(sender As System.Object, e As System.EventArgs) Handles chkSaveBPRelicsDecryptors.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkBuyFuelBlocks_CheckedChanged(sender As Object, e As EventArgs) Handles chkAlwaysBuyFuelBlocks.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkSaveBPCCostperBP_CheckedChanged(sender As Object, e As EventArgs) Handles chkSaveBPCCostperBP.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkBuyRAMs_CheckedChanged(sender As Object, e As EventArgs) Handles chkAlwaysBuyRAMs.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub txtDefaultME_KeyPress(sender As System.Object, e As System.Windows.Forms.KeyPressEventArgs) Handles txtDefaultME.KeyPress
@@ -250,13 +220,13 @@ Public Class frmSettings
                 ' Invalid Character
                 e.Handled = True
             Else
-                btnSave.Text = "Save"
+                MarkDirty()
             End If
         End If
     End Sub
 
     Private Sub txtProxyAddress_TextChanged(sender As System.Object, e As System.EventArgs) Handles txtProxyAddress.TextChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
 #End Region
@@ -338,161 +308,11 @@ Public Class frmSettings
     End Sub
 
     Private Sub LoadFormSettings()
+        Dim viewModel As SettingsViewModel
 
-        Dim AttribLookup As New EVEAttributes
-
-        With UserApplicationSettings
-            ' General Settings
-            chkCheckUpdatesStartup.Checked = .CheckforUpdatesonStart
-
-            If rbtnExportCSV.Text = .DataExportFormat Then
-                rbtnExportCSV.Checked = True
-            ElseIf rbtnExportSSV.Text = .DataExportFormat Then
-                rbtnExportSSV.Checked = True
-            ElseIf rbtnExportDefault.Text = .DataExportFormat Then
-                rbtnExportDefault.Checked = True
-            End If
-
-            chkShowToolTips.Checked = .ShowToolTips
-            chkRefreshAssetsonStartup.Checked = .LoadAssetsonStartup
-            chkRefreshBPsonStartup.Checked = .LoadBPsonStartup
-            chkDisableSound.Checked = .DisableSound
-
-            chkLoadBPsbyChar.Checked = .LoadBPsbyChar
-            chkSaveFacilitiesbyChar.Checked = .SaveFacilitiesbyChar
-
-            ' ESI
-            chkRefreshSystemCostIndiciesDataonStartup.Checked = .LoadESISystemCostIndiciesDataonStartup
-            chkRefreshMarketDataonStartup.Checked = .LoadESIMarketDataonStartup
-            chkRefreshPublicStructureDataonStartup.Checked = .LoadESIPublicStructuresonStartup
-            chkSupressESImsgs.Checked = .SupressESIStatusMessages
-
-            If .BrokerCorpStanding = Defaults.DefaultBrokerCorpStanding Then
-                ' Default
-                chkBrokerCorpStanding.Checked = False
-                txtBrokerCorpStanding.Enabled = False
-                txtBrokerCorpStanding.Text = FormatNumber(Defaults.DefaultBrokerCorpStanding, 2)
-            Else
-                ' User
-                chkBrokerCorpStanding.Checked = True
-                txtBrokerCorpStanding.Enabled = True
-                txtBrokerCorpStanding.Text = FormatNumber(.BrokerCorpStanding, 2)
-            End If
-
-            If .BrokerFactionStanding = Defaults.DefaultBrokerFactionStanding Then
-                ' Default
-                chkBrokerFactionStanding.Checked = False
-                txtBrokerFactionStanding.Enabled = False
-                txtBrokerFactionStanding.Text = FormatNumber(Defaults.DefaultBrokerFactionStanding, 2)
-            Else
-                ' User
-                chkBrokerFactionStanding.Checked = True
-                txtBrokerFactionStanding.Enabled = True
-                txtBrokerFactionStanding.Text = FormatNumber(.BrokerFactionStanding, 2)
-            End If
-
-            ' Implants
-            If .ManufacturingImplantValue > 0 Then
-                chkBeanCounterManufacturing.Checked = True
-                Select Case .ManufacturingImplantValue
-                    Case (-1 * AttribLookup.GetAttribute(Defaults.MBeanCounterName & "1", ItemAttributes.manufacturingTimeBonus) / 100)
-                        cmbBeanCounterManufacturing.Text = Defaults.MBeanCounterName & "1"
-                    Case (-1 * AttribLookup.GetAttribute(Defaults.MBeanCounterName & "2", ItemAttributes.manufacturingTimeBonus) / 100)
-                        cmbBeanCounterManufacturing.Text = Defaults.MBeanCounterName & "2"
-                    Case (-1 * AttribLookup.GetAttribute(Defaults.MBeanCounterName & "4", ItemAttributes.manufacturingTimeBonus) / 100)
-                        cmbBeanCounterManufacturing.Text = Defaults.MBeanCounterName & "4"
-                End Select
-            Else
-                cmbBeanCounterManufacturing.Enabled = False
-            End If
-
-            If .RefiningImplantValue > 0 Then
-                chkBeanCounterRefining.Checked = True
-                Select Case .RefiningImplantValue
-                    Case (AttribLookup.GetAttribute(Defaults.RBeanCounterName & "1", ItemAttributes.refiningYieldMutator) / 100)
-                        cmbBeanCounterRefining.Text = Defaults.RBeanCounterName & "1"
-                    Case (AttribLookup.GetAttribute(Defaults.RBeanCounterName & "2", ItemAttributes.refiningYieldMutator) / 100)
-                        cmbBeanCounterRefining.Text = Defaults.RBeanCounterName & "2"
-                    Case (AttribLookup.GetAttribute(Defaults.RBeanCounterName & "4", ItemAttributes.refiningYieldMutator) / 100)
-                        cmbBeanCounterRefining.Text = Defaults.RBeanCounterName & "4"
-                End Select
-            Else
-                cmbBeanCounterRefining.Enabled = False
-            End If
-
-            If .CopyImplantValue > 0 Then
-                chkBeanCounterCopy.Checked = True
-                Select Case .CopyImplantValue
-                    Case (-1 * AttribLookup.GetAttribute(Defaults.MBeanCounterName & "1", ItemAttributes.copySpeedBonus) / 100)
-                        cmbBeanCounterCopy.Text = Defaults.CBeanCounterName & "1"
-                    Case (-1 * AttribLookup.GetAttribute(Defaults.MBeanCounterName & "3", ItemAttributes.copySpeedBonus) / 100)
-                        cmbBeanCounterCopy.Text = Defaults.CBeanCounterName & "3"
-                    Case (-1 * AttribLookup.GetAttribute(Defaults.MBeanCounterName & "5", ItemAttributes.copySpeedBonus) / 100)
-                        cmbBeanCounterCopy.Text = Defaults.CBeanCounterName & "5"
-                End Select
-            Else
-                cmbBeanCounterCopy.Enabled = False
-            End If
-
-            ' For Build/Buy
-            chkBuildBuyDefault.Checked = .CheckBuildBuy
-            chkSuggestBuildwhenBPnotOwned.Checked = .SuggestBuildBPNotOwned
-            chkBuildWhenNotEnoughItemsonMarket.Checked = .BuildWhenNotEnoughItemsonMarket
-            chkManualPriceOverride.Checked = .ManualPriceOverride
-            chkSaveBPRelicsDecryptors.Checked = .SaveBPRelicsDecryptors
-            chkAlwaysBuyFuelBlocks.Checked = .AlwaysBuyFuelBlocks
-            chkAlwaysBuyRAMs.Checked = .AlwaysBuyRAMs
-            chkSaveBPCCostperBP.Checked = .SaveBPCCostperBP
-
-            chkDisableSVR.Checked = .DisableSVR
-            chkDisableTracking.Checked = .DisableGATracking
-            chkShareFacilities.Checked = .ShareSavedFacilities
-
-            chkAlphaAccount.Checked = .AlphaAccount
-            chkUseActiveSkills.Checked = .UseActiveSkillLevels
-            chkLoadMaxAlphaSkills.Checked = .LoadMaxAlphaSkills
-
-            chkLinksInCopyText.Checked = .IncludeInGameLinksinCopyText
-
-            ' ShoppingList
-            chkIncludeShopListInventMats.Checked = .ShopListIncludeInventMats
-            chkIncludeShopListCopyMats.Checked = .ShopListIncludeCopyMats
-
-            If .DefaultBPME = 0 Then
-                txtDefaultME.Text = CStr(Defaults.DefaultSettingME)
-                chkDefaultME.Checked = False
-                txtDefaultME.Enabled = False
-            Else
-                txtDefaultME.Text = CStr(.DefaultBPME)
-                chkDefaultME.Checked = True
-                txtDefaultME.Enabled = True
-            End If
-
-            If .DefaultBPTE = 0 Then
-                txtDefaultTE.Text = CStr(Defaults.DefaultSettingTE)
-                chkDefaultTE.Checked = False
-                txtDefaultTE.Enabled = False
-            Else
-                txtDefaultTE.Text = CStr(.DefaultBPTE)
-                chkDefaultTE.Checked = True
-                txtDefaultTE.Enabled = True
-            End If
-
-            If .UpdatePricesRefreshInterval <> Defaults.DefaultUpdatePricesRefreshInterval Then
-                chkFuzzworksMarketInterval.Checked = True
-                txtFuzzworksMarketInterval.Enabled = True
-                txtFuzzworksMarketInterval.Text = CStr(.UpdatePricesRefreshInterval)
-            Else
-                chkFuzzworksMarketInterval.Checked = False
-                txtFuzzworksMarketInterval.Enabled = False
-                txtFuzzworksMarketInterval.Text = CStr(Defaults.DefaultUpdatePricesRefreshInterval)
-            End If
-
-            chkAutoUpdateSVRBPTab.Checked = .AutoUpdateSVRonBPTab
-
-            txtProxyAddress.Text = .ProxyAddress
-            txtProxyPort.Text = CStr(.ProxyPort)
-        End With
+        FirstLoad = True
+        viewModel = SettingsService.BuildViewModel(UserApplicationSettings, Defaults)
+        ApplySettingsViewModel(viewModel)
 
         FirstLoad = False
 
@@ -500,19 +320,167 @@ Public Class frmSettings
 
     End Sub
 
+    Private Sub ApplySettingsViewModel(ByVal viewModel As SettingsViewModel)
+        chkCheckUpdatesStartup.Checked = viewModel.CheckforUpdatesonStart
+
+        rbtnExportCSV.Checked = (rbtnExportCSV.Text = viewModel.DataExportFormat)
+        rbtnExportSSV.Checked = (rbtnExportSSV.Text = viewModel.DataExportFormat)
+        rbtnExportDefault.Checked = (rbtnExportDefault.Text = viewModel.DataExportFormat)
+
+        chkShowToolTips.Checked = viewModel.ShowToolTips
+        chkRefreshAssetsonStartup.Checked = viewModel.LoadAssetsonStartup
+        chkRefreshBPsonStartup.Checked = viewModel.LoadBPsonStartup
+        chkDisableSound.Checked = viewModel.DisableSound
+
+        chkLoadBPsbyChar.Checked = viewModel.LoadBPsbyChar
+        chkSaveFacilitiesbyChar.Checked = viewModel.SaveFacilitiesbyChar
+
+        chkRefreshSystemCostIndiciesDataonStartup.Checked = viewModel.LoadESISystemCostIndiciesDataonStartup
+        chkRefreshMarketDataonStartup.Checked = viewModel.LoadESIMarketDataonStartup
+        chkRefreshPublicStructureDataonStartup.Checked = viewModel.LoadESIPublicStructuresonStartup
+        chkSupressESImsgs.Checked = viewModel.SupressESIStatusMessages
+
+        chkBrokerCorpStanding.Checked = viewModel.UseBrokerCorpStanding
+        txtBrokerCorpStanding.Enabled = viewModel.UseBrokerCorpStanding
+        txtBrokerCorpStanding.Text = viewModel.BrokerCorpStandingText
+
+        chkBrokerFactionStanding.Checked = viewModel.UseBrokerFactionStanding
+        txtBrokerFactionStanding.Enabled = viewModel.UseBrokerFactionStanding
+        txtBrokerFactionStanding.Text = viewModel.BrokerFactionStandingText
+
+        chkBeanCounterManufacturing.Checked = viewModel.UseManufacturingImplant
+        cmbBeanCounterManufacturing.Enabled = viewModel.UseManufacturingImplant
+        cmbBeanCounterManufacturing.Text = viewModel.ManufacturingImplantName
+
+        chkBeanCounterRefining.Checked = viewModel.UseRefiningImplant
+        cmbBeanCounterRefining.Enabled = viewModel.UseRefiningImplant
+        cmbBeanCounterRefining.Text = viewModel.RefiningImplantName
+
+        chkBeanCounterCopy.Checked = viewModel.UseCopyImplant
+        cmbBeanCounterCopy.Enabled = viewModel.UseCopyImplant
+        cmbBeanCounterCopy.Text = viewModel.CopyImplantName
+
+        chkBuildBuyDefault.Checked = viewModel.CheckBuildBuy
+        chkSuggestBuildwhenBPnotOwned.Checked = viewModel.SuggestBuildBPNotOwned
+        chkBuildWhenNotEnoughItemsonMarket.Checked = viewModel.BuildWhenNotEnoughItemsonMarket
+        chkManualPriceOverride.Checked = viewModel.ManualPriceOverride
+        chkSaveBPRelicsDecryptors.Checked = viewModel.SaveBPRelicsDecryptors
+        chkAlwaysBuyFuelBlocks.Checked = viewModel.AlwaysBuyFuelBlocks
+        chkAlwaysBuyRAMs.Checked = viewModel.AlwaysBuyRAMs
+        chkSaveBPCCostperBP.Checked = viewModel.SaveBPCCostperBP
+
+        chkDisableSVR.Checked = viewModel.DisableSVR
+        chkDisableTracking.Checked = viewModel.DisableGATracking
+        chkShareFacilities.Checked = viewModel.ShareSavedFacilities
+
+        chkAlphaAccount.Checked = viewModel.AlphaAccount
+        chkUseActiveSkills.Checked = viewModel.UseActiveSkillLevels
+        chkLoadMaxAlphaSkills.Checked = viewModel.LoadMaxAlphaSkills
+
+        chkLinksInCopyText.Checked = viewModel.IncludeInGameLinksinCopyText
+        chkIncludeShopListInventMats.Checked = viewModel.ShopListIncludeInventMats
+        chkIncludeShopListCopyMats.Checked = viewModel.ShopListIncludeCopyMats
+
+        chkDefaultME.Checked = viewModel.UseDefaultME
+        txtDefaultME.Enabled = viewModel.UseDefaultME
+        txtDefaultME.Text = viewModel.DefaultMEText
+
+        chkDefaultTE.Checked = viewModel.UseDefaultTE
+        txtDefaultTE.Enabled = viewModel.UseDefaultTE
+        txtDefaultTE.Text = viewModel.DefaultTEText
+
+        chkFuzzworksMarketInterval.Checked = viewModel.UseCustomPriceRefreshInterval
+        txtFuzzworksMarketInterval.Enabled = viewModel.UseCustomPriceRefreshInterval
+        txtFuzzworksMarketInterval.Text = viewModel.PriceRefreshIntervalText
+
+        chkAutoUpdateSVRBPTab.Checked = viewModel.AutoUpdateSVRonBPTab
+
+        txtProxyAddress.Text = viewModel.ProxyAddress
+        txtProxyPort.Text = viewModel.ProxyPortText
+    End Sub
+
+    Private Function ReadSettingsViewModel() As SettingsViewModel
+        Dim viewModel As New SettingsViewModel
+
+        With viewModel
+            .CheckforUpdatesonStart = chkCheckUpdatesStartup.Checked
+
+            If rbtnExportDefault.Checked Then
+                .DataExportFormat = rbtnExportDefault.Text
+            ElseIf rbtnExportCSV.Checked Then
+                .DataExportFormat = rbtnExportCSV.Text
+            ElseIf rbtnExportSSV.Checked Then
+                .DataExportFormat = rbtnExportSSV.Text
+            End If
+
+            .ShowToolTips = chkShowToolTips.Checked
+            .DisableSound = chkDisableSound.Checked
+            .LoadAssetsonStartup = chkRefreshAssetsonStartup.Checked
+            .LoadBPsonStartup = chkRefreshBPsonStartup.Checked
+            .LoadESIMarketDataonStartup = chkRefreshMarketDataonStartup.Checked
+            .LoadESISystemCostIndiciesDataonStartup = chkRefreshSystemCostIndiciesDataonStartup.Checked
+            .LoadESIPublicStructuresonStartup = chkRefreshPublicStructureDataonStartup.Checked
+            .SupressESIStatusMessages = chkSupressESImsgs.Checked
+            .IncludeInGameLinksinCopyText = chkLinksInCopyText.Checked
+
+            .SaveFacilitiesbyChar = chkSaveFacilitiesbyChar.Checked
+            .LoadBPsbyChar = chkLoadBPsbyChar.Checked
+
+            .UseBrokerCorpStanding = chkBrokerCorpStanding.Checked
+            .BrokerCorpStandingText = txtBrokerCorpStanding.Text
+            .UseBrokerFactionStanding = chkBrokerFactionStanding.Checked
+            .BrokerFactionStandingText = txtBrokerFactionStanding.Text
+
+            .UseManufacturingImplant = chkBeanCounterManufacturing.Checked
+            .ManufacturingImplantName = cmbBeanCounterManufacturing.Text
+            .UseRefiningImplant = chkBeanCounterRefining.Checked
+            .RefiningImplantName = cmbBeanCounterRefining.Text
+            .UseCopyImplant = chkBeanCounterCopy.Checked
+            .CopyImplantName = cmbBeanCounterCopy.Text
+
+            .CheckBuildBuy = chkBuildBuyDefault.Checked
+            .SuggestBuildBPNotOwned = chkSuggestBuildwhenBPnotOwned.Checked
+            .BuildWhenNotEnoughItemsonMarket = chkBuildWhenNotEnoughItemsonMarket.Checked
+            .ManualPriceOverride = chkManualPriceOverride.Checked
+            .SaveBPRelicsDecryptors = chkSaveBPRelicsDecryptors.Checked
+            .AlwaysBuyFuelBlocks = chkAlwaysBuyFuelBlocks.Checked
+            .AlwaysBuyRAMs = chkAlwaysBuyRAMs.Checked
+            .SaveBPCCostperBP = chkSaveBPCCostperBP.Checked
+
+            .DisableSVR = chkDisableSVR.Checked
+            .DisableGATracking = chkDisableTracking.Checked
+            .ShareSavedFacilities = chkShareFacilities.Checked
+
+            .AlphaAccount = chkAlphaAccount.Checked
+            .UseActiveSkillLevels = chkUseActiveSkills.Checked
+            .LoadMaxAlphaSkills = chkLoadMaxAlphaSkills.Checked
+
+            .ShopListIncludeInventMats = chkIncludeShopListInventMats.Checked
+            .ShopListIncludeCopyMats = chkIncludeShopListCopyMats.Checked
+
+            .UseDefaultME = chkDefaultME.Checked
+            .DefaultMEText = txtDefaultME.Text
+            .UseDefaultTE = chkDefaultTE.Checked
+            .DefaultTEText = txtDefaultTE.Text
+            .UseCustomPriceRefreshInterval = chkFuzzworksMarketInterval.Checked
+            .PriceRefreshIntervalText = txtFuzzworksMarketInterval.Text
+
+            .AutoUpdateSVRonBPTab = chkAutoUpdateSVRBPTab.Checked
+            .ProxyAddress = txtProxyAddress.Text
+            .ProxyPortText = txtProxyPort.Text
+        End With
+
+        Return viewModel
+    End Function
+
     Private Sub btnSave_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles btnSave.Click
         Dim TempSettings As ApplicationSettings = Nothing
-
-        ' Default values are 0 for implants in settings, since the value stored will get added later. This is the value bonus of the implant
-        Dim RefineImplantValue As Double = 0
-        Dim ManufacturingImplantValue As Double = 0
-        Dim CopyImplantValue As Double = 0
+        Dim TempViewModel As SettingsViewModel
 
         Dim OldMaxAlphaSkillsSetting As Boolean = UserApplicationSettings.LoadMaxAlphaSkills
 
         Dim Settings As New ProgramSettings
         Dim ReloadFacilties As Boolean = False
-        Dim AttribLookup As New EVEAttributes
 
         If btnSave.Text = "Save" Then
 
@@ -524,65 +492,26 @@ Public Class frmSettings
             Me.Cursor = Cursors.WaitCursor
             Me.Enabled = False
 
-            ' Get the implant values if set
-            If chkBeanCounterManufacturing.Checked Then
-                ManufacturingImplantValue = -1 * AttribLookup.GetAttribute(cmbBeanCounterManufacturing.Text, ItemAttributes.manufacturingTimeBonus) / 100
-            End If
-
-            If chkBeanCounterRefining.Checked Then
-                RefineImplantValue = AttribLookup.GetAttribute(cmbBeanCounterRefining.Text, ItemAttributes.refiningYieldMutator) / 100
-            End If
-
-            If chkBeanCounterCopy.Checked Then
-                CopyImplantValue = -1 * AttribLookup.GetAttribute(cmbBeanCounterCopy.Text, ItemAttributes.copySpeedBonus) / 100
-            End If
+            TempViewModel = ReadSettingsViewModel()
 
             With TempSettings
-
-                .CheckforUpdatesonStart = CBool(chkCheckUpdatesStartup.Checked)
-                If rbtnExportDefault.Checked Then
-                    .DataExportFormat = rbtnExportDefault.Text
-                ElseIf rbtnExportCSV.Checked Then
-                    .DataExportFormat = rbtnExportCSV.Text
-                ElseIf rbtnExportSSV.Checked Then
-                    .DataExportFormat = rbtnExportSSV.Text
-                End If
-                .ShowToolTips = CBool(chkShowToolTips.Checked)
-                ' Disable sound here - only works for update dings, not all sound
-                .DisableSound = CBool(chkDisableSound.Checked)
-
-                .RefiningImplantValue = RefineImplantValue
-                .ManufacturingImplantValue = ManufacturingImplantValue
-                .CopyImplantValue = CopyImplantValue
-
-                ' ESI
-                .LoadESISystemCostIndiciesDataonStartup = chkRefreshSystemCostIndiciesDataonStartup.Checked
-                .LoadESIMarketDataonStartup = chkRefreshMarketDataonStartup.Checked
-                .LoadESIPublicStructuresonStartup = chkRefreshPublicStructureDataonStartup.Checked
-                .SupressESIStatusMessages = chkSupressESImsgs.Checked
-
                 ' If they didn't have this checked before, refresh assets
                 If SelectedCharacter.ID <> DummyCharacterID Then
-                    If UserApplicationSettings.LoadAssetsonStartup = False And chkRefreshAssetsonStartup.Checked Then
+                    If UserApplicationSettings.LoadAssetsonStartup = False And TempViewModel.LoadAssetsonStartup Then
                         Call CharacterDataService.RefreshAssets(SelectedCharacter, True)
                     End If
 
                     ' Same with blueprints
-                    If UserApplicationSettings.LoadBPsonStartup = False And chkRefreshBPsonStartup.Checked Then
+                    If UserApplicationSettings.LoadBPsonStartup = False And TempViewModel.LoadBPsonStartup Then
                         Call CharacterDataService.RefreshBlueprints(SelectedCharacter, True)
                     End If
                 End If
 
-                ' Now set these
-                .LoadAssetsonStartup = CBool(chkRefreshAssetsonStartup.Checked)
-                .LoadBPsonStartup = CBool(chkRefreshBPsonStartup.Checked)
-
-                If UserApplicationSettings.SaveFacilitiesbyChar <> CBool(chkSaveFacilitiesbyChar.Checked) Then
+                If UserApplicationSettings.SaveFacilitiesbyChar <> TempViewModel.SaveFacilitiesbyChar Then
                     ReloadFacilties = True
                 End If
-                .SaveFacilitiesbyChar = CBool(chkSaveFacilitiesbyChar.Checked)
 
-                If UserApplicationSettings.LoadBPsbyChar <> CBool(chkLoadBPsbyChar.Checked) Then
+                If UserApplicationSettings.LoadBPsbyChar <> TempViewModel.LoadBPsbyChar Then
                     Dim Response As MsgBoxResult
                     Response = MsgBox("This will reset all Blueprint Data for the program." & Environment.NewLine & "Are you sure you want to do this?", vbYesNo, Application.ProductName)
 
@@ -593,7 +522,7 @@ Public Class frmSettings
                         Call EVEDB.ExecuteNonQuerySQL("UPDATE ESI_CHARACTER_DATA SET BLUEPRINTS_CACHE_DATE = NULL")
 
                         ' Set the current setting to what they want so the BP's load per the setting
-                        UserApplicationSettings.LoadBPsbyChar = CBool(chkLoadBPsbyChar.Checked)
+                        UserApplicationSettings.LoadBPsbyChar = TempViewModel.LoadBPsbyChar
 
                         ' Need to reload the blueprints for all characters
                         Dim rsChar As SQLiteDataReader
@@ -614,72 +543,13 @@ Public Class frmSettings
                         rsChar.Close()
                     Else
                         ' Switch back
-                        chkLoadBPsbyChar.Checked = .LoadBPsbyChar
+                        chkLoadBPsbyChar.Checked = UserApplicationSettings.LoadBPsbyChar
+                        TempViewModel.LoadBPsbyChar = UserApplicationSettings.LoadBPsbyChar
                     End If
                 End If
-
-                ' Save change
-                .LoadBPsbyChar = CBool(chkLoadBPsbyChar.Checked)
-
-                ' Standings
-                .BrokerCorpStanding = CDbl(txtBrokerCorpStanding.Text)
-                .BrokerFactionStanding = CDbl(txtBrokerFactionStanding.Text)
-
-                ' Default build/buy
-                .CheckBuildBuy = CBool(chkBuildBuyDefault.Checked)
-
-                .DefaultBPME = CInt(txtDefaultME.Text)
-                .DefaultBPTE = CInt(txtDefaultTE.Text)
-
-                .DisableSVR = chkDisableSVR.Checked
-                .DisableGATracking = chkDisableTracking.Checked
-                .ShareSavedFacilities = chkShareFacilities.Checked
-
-                .SuggestBuildBPNotOwned = chkSuggestBuildwhenBPnotOwned.Checked
-                .BuildWhenNotEnoughItemsonMarket = chkBuildWhenNotEnoughItemsonMarket.Checked
-                .ManualPriceOverride = chkManualPriceOverride.Checked
-                .SaveBPRelicsDecryptors = chkSaveBPRelicsDecryptors.Checked
-
-                .AlwaysBuyFuelBlocks = chkAlwaysBuyFuelBlocks.Checked
-                .AlwaysBuyRAMs = chkAlwaysBuyRAMs.Checked
-                .SaveBPCCostperBP = chkSaveBPCCostperBP.Checked
-
-                .AlphaAccount = chkAlphaAccount.Checked
-                .UseActiveSkillLevels = chkUseActiveSkills.Checked
-                .LoadMaxAlphaSkills = chkLoadMaxAlphaSkills.Checked
-
-                .ShopListIncludeInventMats = chkIncludeShopListInventMats.Checked
-                .ShopListIncludeCopyMats = chkIncludeShopListCopyMats.Checked
-
-                .UpdatePricesRefreshInterval = CInt(txtFuzzworksMarketInterval.Text)
-
-                .IncludeInGameLinksinCopyText = chkLinksInCopyText.Checked
-
-                ' SVR
-                .AutoUpdateSVRonBPTab = chkAutoUpdateSVRBPTab.Checked
-
-                ' Save the editable rates - these are set on the other screen
-                .AlphaAccountTaxRate = UserApplicationSettings.AlphaAccountTaxRate
-                .BaseBrokerFeeRate = UserApplicationSettings.BaseBrokerFeeRate
-                .BaseSalesTaxRate = UserApplicationSettings.BaseSalesTaxRate
-                .SCCBrokerFeeSurcharge = UserApplicationSettings.SCCBrokerFeeSurcharge
-                .SCCIndustryFeeSurcharge = UserApplicationSettings.SCCIndustryFeeSurcharge
-                .StructureTaxRate = UserApplicationSettings.StructureTaxRate
-                .StationTaxRate = UserApplicationSettings.StationTaxRate
-
-                If txtProxyAddress.Text <> "" Then
-                    .ProxyAddress = txtProxyAddress.Text
-                Else
-                    .ProxyAddress = ""
-                End If
-
-                If Trim(txtProxyPort.Text) <> "" Then
-                    .ProxyPort = CInt(txtProxyPort.Text)
-                Else
-                    .ProxyPort = 0
-                End If
-
             End With
+
+            TempSettings = SettingsService.BuildApplicationSettings(TempViewModel, UserApplicationSettings)
 
             ' Save the data in the XML file
             Call Settings.SaveApplicationSettings(TempSettings)
@@ -831,21 +701,21 @@ InvalidData:
         Else
             chkUseActiveSkills.Enabled = True
         End If
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkUseActiveSkills_CheckedChanged(sender As Object, e As EventArgs) Handles chkUseActiveSkills.CheckedChanged
         ' They changed active skills, so reload character skills on exit
         ReloadSkills = True
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkSuggestBuildwhenBPnotOwned_CheckedChanged(sender As Object, e As EventArgs) Handles chkSuggestBuildwhenBPnotOwned.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkBuildWhenNotEnoughItemsonMarket_CheckedChanged(sender As Object, e As EventArgs) Handles chkBuildWhenNotEnoughItemsonMarket.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub btnOpenRates_Click(sender As Object, e As EventArgs) Handles btnOpenRates.Click
@@ -854,50 +724,50 @@ InvalidData:
     End Sub
 
     Private Sub chkManualPriceOverride_CheckedChanged(sender As Object, e As EventArgs) Handles chkManualPriceOverride.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkAutoUpdateSVRBPTab_CheckedChanged(sender As Object, e As EventArgs) Handles chkAutoUpdateSVRBPTab.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkSupressESImsgs_CheckedChanged(sender As Object, e As EventArgs) Handles chkSupressESImsgs.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkRefreshPublicStructureDataonStartup_CheckedChanged(sender As Object, e As EventArgs) Handles chkRefreshPublicStructureDataonStartup.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkRefreshBPsonStartup_CheckedChanged(sender As Object, e As EventArgs) Handles chkRefreshBPsonStartup.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkRefreshAssetsonStartup_CheckedChanged(sender As Object, e As EventArgs) Handles chkRefreshAssetsonStartup.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkDisableTracking_CheckedChanged(sender As Object, e As EventArgs) Handles chkDisableTracking.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkShareFacilities_CheckedChanged(sender As Object, e As EventArgs) Handles chkShareFacilities.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkLinksInCopyText_CheckedChanged(sender As Object, e As EventArgs) Handles chkLinksInCopyText.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkIncludeShopListInventMats_CheckedChanged(sender As Object, e As EventArgs) Handles chkIncludeShopListInventMats.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkIncludeShopListCopyMats_CheckedChanged(sender As Object, e As EventArgs) Handles chkIncludeShopListCopyMats.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 
     Private Sub chkLoadMaxAlphaSkills_CheckedChanged(sender As Object, e As EventArgs) Handles chkLoadMaxAlphaSkills.CheckedChanged
-        btnSave.Text = "Save"
+        MarkDirty()
     End Sub
 End Class

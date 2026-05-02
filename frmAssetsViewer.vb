@@ -1,6 +1,5 @@
 ﻿
 Imports System.Runtime.InteropServices
-Imports System.Data.SQLite
 
 Public Class frmAssetsViewer
 
@@ -9,9 +8,6 @@ Public Class frmAssetsViewer
     Private RefreshAssetButton As Boolean
 
     Private SelectedSettings As AssetWindowSettings
-
-    ' The saved location ids
-    Private SavedLocationIDs As List(Of LocationInfo)
 
     Private m_ControlsCollection As ControlsCollection
     Private TechCheckBoxes(6) As CheckBox
@@ -130,8 +126,6 @@ Public Class frmAssetsViewer
         PriceCheckT5Enabled = True
         PriceCheckT6Enabled = True
 
-        SavedLocationIDs = New List(Of LocationInfo)
-
         AssetTree.DrawMode = TreeViewDrawMode.OwnerDrawAll
         AssetTree.CheckBoxes = True
 
@@ -146,6 +140,8 @@ Public Class frmAssetsViewer
 
     ' Initialize the form based on user settings
     Private Sub frmAssetsViewer_Shown(sender As Object, e As System.EventArgs) Handles Me.Shown
+        Dim viewModel As AssetsViewerViewModel
+
         Application.DoEvents()
 
         FirstLoad = True
@@ -170,105 +166,14 @@ Public Class frmAssetsViewer
         pnlStatus.Text = ""
         pnlProgressBar.Visible = False
 
-        ' Main form
-        Select Case SelectedSettings.AssetType
-            Case rbtnAllAssets.Text
-                rbtnAllAssets.Checked = True
-            Case rbtnPersonalAssets.Text
-                rbtnPersonalAssets.Checked = True
-            Case rbtnCorpAssets.Text
-                rbtnCorpAssets.Checked = True
-        End Select
-
-        If SelectedSettings.SortbyName Then
-            rbtnSortName.Checked = True
-        Else
-            rbtnSortQuantity.Checked = True
-        End If
-
         lblReloadCorpAssets.Text = "---"
         lblReloadPersonalAssets.Text = "---"
 
-        ' Search settings form
-        If SelectedSettings.AllItems Then
-            rbtnAllItems.Checked = True
-        Else
-            rbtnBPMats.Checked = True
-        End If
-
-        If SelectedSettings.SelectedAccount Then
-            rbtnSelectedAccount.Checked = True
-        Else
-            rbtnMultiAccounts.Checked = True
-        End If
+        viewModel = AssetsViewerService.BuildViewModel(SelectedSettings)
+        ApplyAssetsViewerViewModel(viewModel)
 
         ' Regardless, load up all account info
         Call LoadAccountList()
-
-        txtItemFilter.Text = SelectedSettings.ItemFilterText
-
-        ' Load the search settings
-        With SelectedSettings
-            chkMaterialResearchEqPrices.Checked = .AllRawMats
-
-            chkAdvancedProtectiveTechnology.Checked = .AdvancedProtectiveTechnology
-            chkGas.Checked = .Gas
-            chkIceProducts.Checked = .IceProducts
-            chkMolecularForgingTools.Checked = .MolecularForgingTools
-            chkFactionMaterials.Checked = .FactionMaterials
-            chkNamedComponents.Checked = .NamedComponents
-            chkMinerals.Checked = .Minerals
-            chkPlanetary.Checked = .Planetary
-            chkRawMaterials.Checked = .RawMaterials
-            chkSalvage.Checked = .Salvage
-            chkMisc.Checked = .Misc
-            chkBPCs.Checked = .BPCs
-
-            chkAdvancedMats.Checked = .AdvancedMoonMats
-            chkBoosterMats.Checked = .BoosterMats
-            chkMolecularForgedMaterials.Checked = .MolecularForgedMats
-            chkPolymers.Checked = .Polymers
-            chkProcessedMats.Checked = .ProcessedMoonMats
-            chkRawMoonMats.Checked = .RawMoonMats
-
-            chkAncientRelics.Checked = .AncientRelics
-            chkDatacores.Checked = .Datacores
-            chkDecryptors.Checked = .Decryptors
-            chkRDb.Checked = .RDB
-
-            chkManufacturedItems.Checked = .AllManufacturedItems
-
-            chkShips.Checked = .Ships
-            chkCharges.Checked = .Charges
-            chkModules.Checked = .Modules
-            chkDrones.Checked = .Drones
-            chkRigs.Checked = .Rigs
-            chkSubsystems.Checked = .Subsystems
-            chkDeployables.Checked = .Deployables
-            chkBoosters.Checked = .Boosters
-            chkStructures.Checked = .Structures
-            chkStructureRigs.Checked = .StructureRigs
-            chkCelestials.Checked = .Celestials
-            chkStructureModules.Checked = .StructureModules
-            chkImplants.Checked = .Implants
-
-            chkCapT2Components.Checked = .AdvancedCapComponents
-            chkAdvancedComponents.Checked = .AdvancedComponents
-            chkFuelBlocks.Checked = .FuelBlocks
-            chkProtectiveComponents.Checked = .ProtectiveComponents
-            chkRAM.Checked = .RAM
-            chkNobuild.Checked = .NoBuildItems
-            chkCapitalShipComponents.Checked = .CapitalShipComponents
-            chkStructureComponents.Checked = .StructureComponents
-            chkSubsystemComponents.Checked = .SubsystemComponents
-
-            chkItemsT1.Checked = .T1
-            chkItemsT2.Checked = .T2
-            chkItemsT3.Checked = .T3
-            chkItemsT4.Checked = .Storyline
-            chkItemsT5.Checked = .Faction
-            chkItemsT6.Checked = .Pirate
-        End With
 
         FirstLoad = False
 
@@ -283,34 +188,23 @@ Public Class frmAssetsViewer
 
     ' Refreshes the account list with character account info
     Private Sub LoadAccountList()
-        Dim rsAccounts As SQLiteDataReader
-        Dim lstCharacterRow As ListViewItem
-        Dim SQL As String = "SELECT CHARACTER_NAME, CORPORATION_NAME, CHARACTER_ID, ESI_CHARACTER_DATA.CORPORATION_ID FROM ESI_CHARACTER_DATA, ESI_CORPORATION_DATA "
-        SQL &= "WHERE ESI_CHARACTER_DATA.CORPORATION_ID = ESI_CORPORATION_DATA.CORPORATION_ID AND CHARACTER_ID <> " & CStr(DummyCharacterID)
-        DBCommand = New SQLiteCommand(SQL, EVEDB.DBREf)
-        rsAccounts = DBCommand.ExecuteReader
+        Dim accounts As List(Of AssetsViewerAccountViewModel)
+
+        accounts = AssetsViewerService.LoadAccounts(SelectedSettings, rbtnMultiAccounts.Checked)
+
         lstCharacters.BeginUpdate()
         lstCharacters.Items.Clear()
 
-        While rsAccounts.Read
-            lstCharacterRow = New ListViewItem("") ' Check
-            lstCharacterRow.SubItems.Add(rsAccounts.GetString(0))
-            lstCharacterRow.SubItems.Add(rsAccounts.GetString(1))
-            lstCharacterRow.SubItems.Add(CStr(rsAccounts.GetInt64(2)))
-            lstCharacterRow.SubItems.Add(CStr(rsAccounts.GetInt64(3)))
-            Call lstCharacters.Items.Add(lstCharacterRow)
-            ' check the selected character to start if only selected account 
-            If rbtnMultiAccounts.Checked Then
-                If Not IsNothing(SelectedSettings.SelectedCharacterIDs) Then
-                    If SelectedSettings.SelectedCharacterIDs.Contains(rsAccounts.GetInt64(2).ToString) Then
-                        lstCharacterRow.Checked = True
-                    End If
-                Else
-                    lstCharacterRow.Checked = True
-                End If
-            End If
+        For Each account In accounts
+            Dim lstCharacterRow As New ListViewItem("")
+            lstCharacterRow.SubItems.Add(account.CharacterName)
+            lstCharacterRow.SubItems.Add(account.CorporationName)
+            lstCharacterRow.SubItems.Add(CStr(account.CharacterId))
+            lstCharacterRow.SubItems.Add(CStr(account.CorporationId))
+            lstCharacterRow.Checked = account.IsChecked
+            lstCharacters.Items.Add(lstCharacterRow)
+        Next
 
-        End While
         lstCharacters.EndUpdate()
     End Sub
 
@@ -370,18 +264,11 @@ Public Class frmAssetsViewer
 
     End Function
 
-    Private Structure AssetDataInfo
-        Dim ID As Long
-        Dim Name As String
-    End Structure
-
     ' Main function that refresh's the tree
     Public Sub RefreshTree()
-        Dim BaseNode As New TreeNode
-        Dim SortOption As SortType
-        Dim SearchItemList As List(Of Long)
-        Dim OnlyBPCs As Boolean ' Pass through if the BPIDs we sent need to only be shown if a copy
         Dim AnchorNode As New TreeNode
+        Dim viewModel As AssetsViewerViewModel
+        Dim refreshRequest As AssetsViewerRefreshRequestViewModel
 
         pnlStatus.Text = ""
         ActiveForm.Cursor = Cursors.WaitCursor
@@ -399,28 +286,11 @@ Public Class frmAssetsViewer
         AssetTree.BeginUpdate()
         AssetTree.Nodes.Clear()
 
-        If rbtnSortName.Checked Then
-            SortOption = SortType.Name
-        ElseIf rbtnSortQuantity.Checked Then
-            SortOption = SortType.Quantity
-        End If
-
-        ' Get the list based on options selected, if not all or if all, they have a text item to search
-        If rbtnBPMats.Checked Or Trim(txtItemFilter.Text) <> "" Then
-            SearchItemList = GetSearchItemsList(rbtnAllItems.Checked)
-        Else
-            SearchItemList = New List(Of Long) ' set to a blank list
-        End If
-
-        ' Set OnlyBPCs
-        If chkBPCs.Checked And rbtnBPMats.Checked Then
-            OnlyBPCs = True
-        Else
-            OnlyBPCs = False
-        End If
+        viewModel = ReadAssetsViewerViewModel()
+        refreshRequest = AssetsViewerService.BuildRefreshRequest(viewModel, SelectedCharacter, GetSelectedCharacterIds(), cmbPriceShipTypes.Text, cmbPriceChargeTypes.Text, GetTechCheckEnabledStates())
 
         ' If we get nothing back from the search item list, then just clear the assets and exit - we have no items to display
-        If IsNothing(SearchItemList) Then
+        If IsNothing(refreshRequest.SearchItemList) Then
             AssetTree.EndUpdate()
             AssetTree.Refresh()
 
@@ -431,98 +301,22 @@ Public Class frmAssetsViewer
             Exit Sub
         End If
 
-        ' Now add all the characters we want to update for assets - add character name in a node first, then attach all the assets to that character node
-        ' Loop through all characters and add each - including corporations. For Corporations, just add separately so we only load one corporation tree for 
-        ' each corporation from the list of characters
-        Dim AssetData As New List(Of AssetDataInfo)
-        Dim Tempinfo As AssetDataInfo
-
-        If rbtnSelectedAccount.Checked Then
-            ' Just use the selected ID and corporation
-            Tempinfo.ID = SelectedCharacter.ID
-            Tempinfo.Name = SelectedCharacter.Name
-            AssetData.Add(Tempinfo)
-        Else
-            ' Go through the list and build all CharacterID's and Corps for those selected
-            If lstCharacters.CheckedItems.Count > 0 Then
-                For i = 0 To lstCharacters.CheckedItems.Count - 1
-                    ' Add to the list
-                    Tempinfo.ID = CLng(lstCharacters.CheckedItems(i).SubItems(3).Text)
-                    Tempinfo.Name = lstCharacters.CheckedItems(i).SubItems(1).Text
-                    AssetData.Add(Tempinfo)
-                Next
-            Else ' nothing selected
-                For Each item In lstCharacters.SelectedItems
-                    MsgBox("You must select a character for assets", vbExclamation, Application.ProductName)
-                    ActiveForm.Cursor = Cursors.Default
-                    Application.DoEvents()
-                    Exit Sub
-                Next
-            End If
+        If Not rbtnSelectedAccount.Checked And refreshRequest.AssetEntries.Count = 0 Then
+            MsgBox("You must select a character for assets", vbExclamation, Application.ProductName)
+            ActiveForm.Cursor = Cursors.Default
+            Application.DoEvents()
+            Exit Sub
         End If
 
         ' Add the base node
         AnchorNode = AssetTree.Nodes.Add("Asset List")
-
-        Dim TokenData As New SavedTokenData
-        Dim AssetCharacterList As New List(Of Character)
-        Dim TempCharacter As New Character
-
-        For Each entry In AssetData
-            ' Create a character, then update the assets, then run asset tree node on that set of assets
-            pnlStatus.Text = "Refreshing Assets for " & entry.Name
-            TokenData.CharacterID = entry.ID
-
-            ' Update Assets only if different character than selected
-            If entry.ID <> SelectedCharacter.ID Then
-                TempCharacter = New Character
-                TempCharacter.LoadCharacterData(TokenData, False, True, False)
-            Else
-                TempCharacter = SelectedCharacter
-            End If
-
-            ' Get the asset locations saved for the character
-            Call SavedLocationIDs.AddRange(TempCharacter.Assets.GetAssetLocationIDs(WindowForm, TempCharacter.ID, TempCharacter.CharacterCorporation))
-            Call AssetCharacterList.Add(TempCharacter)
-
-            ' Now run the tree build
-            pnlStatus.Text = "Loading Assets for " & entry.Name
-            Application.DoEvents()
-
-            ' Get the base node of the full tree (may want to save these options globally so we don't need to load them every time)
-            If rbtnPersonalAssets.Checked Or rbtnAllAssets.Checked Then
-                BaseNode = TempCharacter.GetAssets.GetAssetTreeReturnNode(SortOption, SearchItemList, entry.Name & " - Personal Assets", entry.ID, SavedLocationIDs, OnlyBPCs, TempCharacter.CharacterTokenData)
-
-                ' Need to add it to the tree but as a clone
-                AnchorNode.Nodes.Add(CType(BaseNode.Clone, TreeNode))
-            End If
-        Next
-
-        Dim LoadedCorpIDs As New List(Of Long) ' only load the corp once
-        ' Now load the corporation data at the end
-        For Each entry In AssetCharacterList
-            If (rbtnCorpAssets.Checked Or rbtnAllAssets.Checked) And Not LoadedCorpIDs.Contains(entry.CharacterCorporation.CorporationID) Then
-                pnlStatus.Text = "Loading Assets for " & entry.CharacterCorporation.Name
-                Application.DoEvents()
-                BaseNode = entry.CharacterCorporation.GetAssets.GetAssetTreeReturnNode(SortOption, SearchItemList, entry.CharacterCorporation.Name & " - Corporation Assets", entry.CharacterCorporation.CorporationID, SavedLocationIDs, OnlyBPCs)
-
-                If Not BaseNode.Text.Contains("No Assets Loaded") Then
-                    ' Save this corp as assets already loaded
-                    Call LoadedCorpIDs.Add(entry.CharacterCorporation.CorporationID)
-                    Dim node As TreeNode
-                    ' Remove any nodes that are the same corp and no assets loaded
-                    For Each node In AnchorNode.Nodes
-                        If node.Text.Contains("No Assets Loaded") And node.Name = CStr(entry.CharacterCorporation.CorporationID) Then
-                            AnchorNode.Nodes.Remove(node)
-                            Exit For
-                        End If
-                    Next
-                End If
-
-                ' Need to add it to the tree but as a clone
-                AnchorNode.Nodes.Add(CType(BaseNode.Clone, TreeNode))
-
-            End If
+        For Each assetNode In AssetsViewerService.BuildAssetTreeNodes(refreshRequest,
+                                                                      SelectedCharacter,
+                                                                      WindowForm,
+                                                                      rbtnPersonalAssets.Checked Or rbtnAllAssets.Checked,
+                                                                      rbtnCorpAssets.Checked Or rbtnAllAssets.Checked,
+                                                                      AddressOf UpdateStatus)
+            AnchorNode.Nodes.Add(assetNode)
         Next
 
         ' Update
@@ -553,6 +347,21 @@ Public Class frmAssetsViewer
 
     End Sub
 
+    Private Sub UpdateStatus(ByVal statusText As String)
+        pnlStatus.Text = statusText
+        Application.DoEvents()
+    End Sub
+
+    Private Sub PopulatePriceTypeCombo(ByVal comboBox As ComboBox, ByVal values As IEnumerable(Of String), ByVal defaultValue As String)
+        comboBox.Items.Clear()
+
+        For Each value In values
+            comboBox.Items.Add(value)
+        Next
+
+        comboBox.Text = defaultValue
+    End Sub
+
     Private Sub ExpandCheckedNodes(NodeSet As TreeNodeCollection, ByRef BaseTree As TreeView)
         Dim node As New TreeNode
 
@@ -573,113 +382,6 @@ Public Class frmAssetsViewer
             FindCheckedNode(tn, BaseTree)
         Next
     End Sub
-
-    ' Gets TypeIDs for items we only want to see in the asset tree from stuff we can set a price for
-    Private Function GetSearchItemsList(SearchAllItems As Boolean) As List(Of Long)
-        Dim ItemIDList As New List(Of Long)
-        Dim readerMats As SQLiteDataReader
-        Dim SQL As String
-        Dim TechSQL As String = ""
-        Dim TechChecked As Boolean = False
-        Dim ItemChecked As Boolean = False
-
-        ' Working
-        ActiveForm.Cursor = Cursors.WaitCursor
-        Application.DoEvents()
-
-        ' If we want all items, look in inventory types with links to groups/categories
-        If SearchAllItems Then
-            ' Get the item id from prices, since these are items we can set a price for and will be used in building items
-            SQL = "SELECT typeID AS ITEM_ID FROM INVENTORY_TYPES, INVENTORY_GROUPS, INVENTORY_CATEGORIES "
-            SQL &= "WHERE INVENTORY_TYPES.groupID = INVENTORY_GROUPS.groupID "
-            SQL &= "AND INVENTORY_GROUPS.categoryID = INVENTORY_CATEGORIES.categoryID "
-
-            ' Search based on text
-            If txtItemFilter.Text <> "" Then
-                SQL &= " AND typeName LIKE '%" & FormatDBString(Trim(txtItemFilter.Text)) & "%' "
-            End If
-
-            DBCommand = New SQLiteCommand(SQL, EVEDB.DBREf)
-            readerMats = DBCommand.ExecuteReader
-
-            ' Fill list
-            While readerMats.Read
-                Call ItemIDList.Add(readerMats.GetInt64(0))
-            End While
-
-            readerMats.Close()
-
-        Else
-            ' Want just building materials (from prices)
-            ' Get the item id from prices, since these are items we can set a price for and will be used in building items
-            SQL = "SELECT ITEM_ID FROM ITEM_PRICES, INVENTORY_TYPES"
-            SQL &= " WHERE ITEM_PRICES.ITEM_ID = INVENTORY_TYPES.typeID AND ("
-
-            Dim GroupSQL As String = GetItemPriceGroupListSQL(chkAdvancedComponents, chkAdvancedMats, chkAdvancedProtectiveTechnology, chkAncientRelics,
-                                                              chkBoosterMats, chkBoosters, chkBPCs, chkCapitalShipComponents, chkCapT2Components,
-                                                              chkCelestials, chkCharges, chkDatacores, chkDecryptors, chkDeployables, chkDrones,
-                                                              chkFactionMaterials, chkFuelBlocks, chkGas, chkIceProducts, chkImplants,
-                                                              chkMinerals, chkMisc, chkModules, chkMolecularForgedMaterials, chkMolecularForgingTools,
-                                                              chkNamedComponents, chkPlanetary, chkPolymers, chkProcessedMats, chkProtectiveComponents,
-                                                              chkRAM, chkRawMaterials, chkRawMoonMats, chkRDb, chkRigs, chkSalvage, chkShips,
-                                                              chkStructureComponents, chkStructureModules, chkStructureRigs, chkStructures,
-                                                              chkSubsystemComponents, chkSubsystems, cmbPriceChargeTypes, cmbPriceShipTypes,
-                                                              chkItemsT1, chkItemsT2, chkItemsT3, chkItemsT4, chkItemsT5, chkItemsT6, chkNobuild)
-
-            ' Leave function if no items checked
-            If GroupSQL <> "" Then
-                SQL &= GroupSQL & ")"
-                ' Search based on text
-                If txtItemFilter.Text <> "" Then
-                    SQL &= " AND ITEM_NAME LIKE '%" & FormatDBString(Trim(txtItemFilter.Text)) & "%' "
-                End If
-
-                DBCommand = New SQLiteCommand(SQL, EVEDB.DBREf)
-                readerMats = DBCommand.ExecuteReader
-
-                ' Fill list
-                While readerMats.Read
-                    Call ItemIDList.Add(readerMats.GetInt64(0))
-                End While
-
-                readerMats.Close()
-
-            End If
-
-            ' Blueprint Copies
-            If chkBPCs.Checked And Not SearchAllItems Then
-                ' Look up the typeIDs for all BPs and add them to the list
-                SQL = "SELECT BLUEPRINT_ID, ITEM_NAME FROM ALL_BLUEPRINTS "
-                ' Search based on text
-                If txtItemFilter.Text <> "" Then
-                    SQL &= " WHERE ITEM_NAME LIKE '%" & FormatDBString(Trim(txtItemFilter.Text)) & "%' "
-                End If
-
-                DBCommand = New SQLiteCommand(SQL, EVEDB.DBREf)
-                readerMats = DBCommand.ExecuteReader
-
-                ' Fill list
-                While readerMats.Read
-                    Call ItemIDList.Add(readerMats.GetInt64(0))
-                End While
-
-                readerMats.Close()
-
-            End If
-
-        End If
-
-        ActiveForm.Cursor = Cursors.Default
-        Application.DoEvents()
-
-        ' If we have no items to return, then return nothing not a blank list
-        If ItemIDList.Count = 0 Then
-            Return Nothing
-        Else
-            Return ItemIDList
-        End If
-
-    End Function
 
     ' Just loads the assets from API then DB
     Private Sub ScanForAssets(ByVal BPScanType As ScanType)
@@ -817,15 +519,120 @@ Public Class frmAssetsViewer
 
     End Function
 
-    ' Saves the settings on both tabs for the asset window
-    Private Sub SaveWindowSettings()
-        Dim TempSettings As AssetWindowSettings = Nothing
-        Dim TempLocationIDs As New List(Of Long)
-        Dim SQL As String
-        Dim rsCheck As SQLiteDataReader
+    Private Function GetSelectedCharacterIds() As List(Of Long)
+        Dim selectedCharacterIds As New List(Of Long)
 
-        With TempSettings
-            .SortbyName = rbtnSortName.Checked
+        If rbtnSelectedAccount.Checked Then
+            selectedCharacterIds.Add(SelectedCharacter.ID)
+        Else
+            For i = 0 To lstCharacters.CheckedItems.Count - 1
+                selectedCharacterIds.Add(CLng(lstCharacters.CheckedItems(i).SubItems(3).Text))
+            Next
+        End If
+
+        Return selectedCharacterIds
+    End Function
+
+    Private Function GetTechCheckEnabledStates() As Boolean()
+        Return New Boolean() {chkItemsT1.Enabled, chkItemsT2.Enabled, chkItemsT3.Enabled, chkItemsT4.Enabled, chkItemsT5.Enabled, chkItemsT6.Enabled}
+    End Function
+
+    Private Sub ApplyAssetsViewerViewModel(ByVal viewModel As AssetsViewerViewModel)
+        Select Case viewModel.AssetType
+            Case rbtnAllAssets.Text
+                rbtnAllAssets.Checked = True
+            Case rbtnPersonalAssets.Text
+                rbtnPersonalAssets.Checked = True
+            Case rbtnCorpAssets.Text
+                rbtnCorpAssets.Checked = True
+        End Select
+
+        If viewModel.SortByName Then
+            rbtnSortName.Checked = True
+        Else
+            rbtnSortQuantity.Checked = True
+        End If
+
+        If viewModel.AllItems Then
+            rbtnAllItems.Checked = True
+        Else
+            rbtnBPMats.Checked = True
+        End If
+
+        If viewModel.SelectedAccount Then
+            rbtnSelectedAccount.Checked = True
+        Else
+            rbtnMultiAccounts.Checked = True
+        End If
+
+        txtItemFilter.Text = viewModel.ItemFilterText
+
+        chkMaterialResearchEqPrices.Checked = viewModel.AllRawMats
+
+        chkAdvancedProtectiveTechnology.Checked = viewModel.AdvancedProtectiveTechnology
+        chkGas.Checked = viewModel.Gas
+        chkIceProducts.Checked = viewModel.IceProducts
+        chkMolecularForgingTools.Checked = viewModel.MolecularForgingTools
+        chkFactionMaterials.Checked = viewModel.FactionMaterials
+        chkNamedComponents.Checked = viewModel.NamedComponents
+        chkMinerals.Checked = viewModel.Minerals
+        chkPlanetary.Checked = viewModel.Planetary
+        chkRawMaterials.Checked = viewModel.RawMaterials
+        chkSalvage.Checked = viewModel.Salvage
+        chkMisc.Checked = viewModel.Misc
+        chkBPCs.Checked = viewModel.BPCs
+
+        chkAdvancedMats.Checked = viewModel.AdvancedMoonMats
+        chkBoosterMats.Checked = viewModel.BoosterMats
+        chkMolecularForgedMaterials.Checked = viewModel.MolecularForgedMats
+        chkPolymers.Checked = viewModel.Polymers
+        chkProcessedMats.Checked = viewModel.ProcessedMoonMats
+        chkRawMoonMats.Checked = viewModel.RawMoonMats
+
+        chkAncientRelics.Checked = viewModel.AncientRelics
+        chkDatacores.Checked = viewModel.Datacores
+        chkDecryptors.Checked = viewModel.Decryptors
+        chkRDb.Checked = viewModel.RDB
+
+        chkManufacturedItems.Checked = viewModel.AllManufacturedItems
+
+        chkShips.Checked = viewModel.Ships
+        chkCharges.Checked = viewModel.Charges
+        chkModules.Checked = viewModel.Modules
+        chkDrones.Checked = viewModel.Drones
+        chkRigs.Checked = viewModel.Rigs
+        chkSubsystems.Checked = viewModel.Subsystems
+        chkDeployables.Checked = viewModel.Deployables
+        chkBoosters.Checked = viewModel.Boosters
+        chkStructures.Checked = viewModel.Structures
+        chkStructureRigs.Checked = viewModel.StructureRigs
+        chkCelestials.Checked = viewModel.Celestials
+        chkStructureModules.Checked = viewModel.StructureModules
+        chkImplants.Checked = viewModel.Implants
+
+        chkCapT2Components.Checked = viewModel.AdvancedCapComponents
+        chkAdvancedComponents.Checked = viewModel.AdvancedComponents
+        chkFuelBlocks.Checked = viewModel.FuelBlocks
+        chkProtectiveComponents.Checked = viewModel.ProtectiveComponents
+        chkRAM.Checked = viewModel.RAM
+        chkNobuild.Checked = viewModel.NoBuildItems
+        chkCapitalShipComponents.Checked = viewModel.CapitalShipComponents
+        chkStructureComponents.Checked = viewModel.StructureComponents
+        chkSubsystemComponents.Checked = viewModel.SubsystemComponents
+
+        chkItemsT1.Checked = viewModel.T1
+        chkItemsT2.Checked = viewModel.T2
+        chkItemsT3.Checked = viewModel.T3
+        chkItemsT4.Checked = viewModel.Storyline
+        chkItemsT5.Checked = viewModel.Faction
+        chkItemsT6.Checked = viewModel.Pirate
+    End Sub
+
+    Private Function ReadAssetsViewerViewModel() As AssetsViewerViewModel
+        Dim viewModel As New AssetsViewerViewModel
+
+        With viewModel
+            .SortByName = rbtnSortName.Checked
 
             If rbtnAllAssets.Checked Then
                 .AssetType = rbtnAllAssets.Text
@@ -835,14 +642,9 @@ Public Class frmAssetsViewer
                 .AssetType = rbtnCorpAssets.Text
             End If
 
-            If rbtnAllItems.Checked Then
-                .AllItems = True
-            Else
-                .AllItems = False
-            End If
-
+            .AllItems = rbtnAllItems.Checked
             .SelectedAccount = rbtnSelectedAccount.Checked
-            .SelectedCharacterIDs = GetCharIDs()
+            .ItemFilterText = txtItemFilter.Text
 
             .AllRawMats = chkMaterialResearchEqPrices.Checked
 
@@ -903,45 +705,20 @@ Public Class frmAssetsViewer
             .Storyline = chkItemsT4.Checked
             .Faction = chkItemsT5.Checked
             .Pirate = chkItemsT6.Checked
-
-            ' Finally get all the locations from the checked data for each main account/corp node and save
-            Dim TempTree As TreeNode = AssetTree.Nodes(0)
-            Dim AccountNode As TreeNode
-            Dim AccountsString As String = ""
-            SavedLocationIDs = New List(Of LocationInfo)
-            For Each AccountNode In TempTree.Nodes
-                SavedLocationIDs.AddRange(GetCheckedLocations(AccountNode, CLng(AccountNode.Name)))
-                AccountsString &= CLng(AccountNode.Name) & ","
-            Next
-
-            AccountsString = AccountsString.Substring(0, Len(AccountsString) - 1)
-
-            ' Since a lot of locations will bog down the settings loading, store in a table for this character and corporation
-            Call EVEDB.BeginSQLiteTransaction()
-
-            ' First clear out any records in there for both the account and corp assets on the account
-            SQL = "DELETE FROM ASSET_LOCATIONS WHERE EnumAssetType = " & CStr(WindowForm) & " AND ID IN (" & AccountsString & ")"
-            Call EVEDB.ExecuteNonQuerySQL(SQL)
-
-            For i = 0 To SavedLocationIDs.Count - 1
-                ' See if it's in there already, and only add if not
-                SQL = "SELECT 'X' FROM ASSET_LOCATIONS WHERE EnumAssetType=" & CStr(WindowForm) & " AND ID=" & CStr(SavedLocationIDs(i).AccountID)
-                SQL &= " AND LocationID=" & CStr(SavedLocationIDs(i).LocationID) & " AND FlagID=" & CStr(SavedLocationIDs(i).FlagID)
-                DBCommand = New SQLiteCommand(SQL, EVEDB.DBREf)
-                rsCheck = DBCommand.ExecuteReader
-                rsCheck.Read()
-
-                If Not rsCheck.HasRows Then
-                    SQL = "INSERT INTO ASSET_LOCATIONS (EnumAssetType, ID, LocationID, FlagID) VALUES "
-                    SQL &= "(" & CStr(WindowForm) & "," & CStr(SavedLocationIDs(i).AccountID) & "," & CStr(SavedLocationIDs(i).LocationID) & "," & CStr(SavedLocationIDs(i).FlagID) & ")"
-                    Call EVEDB.ExecuteNonQuerySQL(SQL)
-                End If
-                rsCheck.Close()
-            Next
-
-            Call EVEDB.CommitSQLiteTransaction()
-
         End With
+
+        Return viewModel
+    End Function
+
+    ' Saves the settings on both tabs for the asset window
+    Private Sub SaveWindowSettings()
+        Dim TempSettings As AssetWindowSettings
+        Dim TempViewModel As AssetsViewerViewModel
+
+        TempViewModel = ReadAssetsViewerViewModel()
+        TempSettings = AssetsViewerService.BuildSettings(TempViewModel, GetCharIDs())
+
+        AssetsViewerService.SaveCheckedLocations(WindowForm, If(AssetTree.Nodes.Count > 0, AssetTree.Nodes(0), Nothing))
 
         ' Save the data in the XML file
         Call AllSettings.SaveAssetWindowSettings(TempSettings, WindowForm)
@@ -962,40 +739,6 @@ Public Class frmAssetsViewer
         btnSaveSettings.Focus()
 
     End Sub
-
-    ' Gets all the checked locations in the tree
-    Private Function GetCheckedLocations(SentNode As TreeNode, AccountID As Long) As List(Of LocationInfo)
-        Dim LocationIDList As New List(Of LocationInfo)
-        Dim RList As New List(Of LocationInfo)
-        Dim SubNode As TreeNode = Nothing
-
-        For Each SubNode In SentNode.Nodes
-            If Not IsNothing(SubNode.Tag) Then
-                Dim TempPair As New LocationInfo
-                Dim FlagValue As Integer = CType(SubNode.Tag, EVEAssets.TagInfo).FlagValue
-
-                If SubNode.Checked Then
-                    TempPair.FlagID = FlagValue
-                    TempPair.LocationID = CLng(SubNode.Name)
-                    TempPair.AccountID = AccountID
-
-                    Call LocationIDList.Add(TempPair)
-                End If
-
-                If SubNode.Nodes.Count > 0 Then
-                    RList = GetCheckedLocations(SubNode, AccountID)
-                End If
-
-                If RList.Count <> 0 Then
-                    ' Add to main list
-                    LocationIDList.AddRange(RList)
-                End If
-            End If
-        Next
-
-        Return LocationIDList
-
-    End Function
 
 #Region "Click Events"
 
@@ -1399,74 +1142,16 @@ Public Class frmAssetsViewer
 
     Private Sub cmbPriceShipTypes_DropDown(sender As Object, e As System.EventArgs) Handles cmbPriceShipTypes.DropDown
         If FirstPriceShipTypesComboLoad Then
-            Call LoadPriceShipTypes()
+            PopulatePriceTypeCombo(cmbPriceShipTypes, AssetsViewerService.LoadPriceShipTypes(), "All Ship Types")
             FirstPriceShipTypesComboLoad = False
         End If
     End Sub
 
     Private Sub cmbPriceChargeTypes_DropDown(sender As Object, e As System.EventArgs) Handles cmbPriceChargeTypes.DropDown
         If FirstPriceChargeTypesComboLoad Then
-            Call LoadPriceChargeTypes()
+            PopulatePriceTypeCombo(cmbPriceChargeTypes, AssetsViewerService.LoadPriceChargeTypes(), "All Charge Types")
             FirstPriceChargeTypesComboLoad = False
         End If
-    End Sub
-
-    Private Sub LoadPriceShipTypes()
-        Dim SQL As String
-        Dim readerShipType As SQLiteDataReader
-
-        ' Load the select systems combobox with systems
-        SQL = "SELECT groupName from inventory_types, inventory_groups, inventory_categories "
-        SQL = SQL & "WHERE  inventory_types.groupID = inventory_groups.groupID "
-        SQL = SQL & "AND inventory_groups.categoryID = inventory_categories.categoryID "
-        SQL = SQL & "AND categoryname = 'Ship' AND groupName NOT IN ('Rookie ship','Prototype Exploration Ship') "
-        SQL = SQL & "AND inventory_types.published <> 0 and inventory_groups.published <> 0 and inventory_categories.published <> 0 "
-        SQL = SQL & "GROUP BY groupName "
-
-        DBCommand = New SQLiteCommand(SQL, EVEDB.DBREf)
-        readerShipType = DBCommand.ExecuteReader
-
-        cmbPriceShipTypes.Items.Add("All Ship Types")
-
-        While readerShipType.Read
-            cmbPriceShipTypes.Items.Add(readerShipType.GetString(0))
-        End While
-
-        readerShipType.Close()
-        readerShipType = Nothing
-        DBCommand = Nothing
-
-        cmbPriceShipTypes.Text = "All Ship Types"
-
-    End Sub
-
-    Private Sub LoadPriceChargeTypes()
-        Dim SQL As String
-        Dim readerChargeType As SQLiteDataReader
-
-        ' Load the select systems combobox with systems
-        SQL = "SELECT groupName from inventory_types, inventory_groups, inventory_categories "
-        SQL = SQL & "WHERE  inventory_types.groupID = inventory_groups.groupID "
-        SQL = SQL & "AND inventory_groups.categoryID = inventory_categories.categoryID "
-        SQL = SQL & "AND categoryname = 'Charge' "
-        SQL = SQL & "AND inventory_types.published <> 0 and inventory_groups.published <> 0 and inventory_categories.published <> 0 "
-        SQL = SQL & "GROUP BY groupName "
-
-        DBCommand = New SQLiteCommand(SQL, EVEDB.DBREf)
-        readerChargeType = DBCommand.ExecuteReader
-
-        cmbPriceChargeTypes.Items.Add("All Charge Types")
-
-        While readerChargeType.Read
-            cmbPriceChargeTypes.Items.Add(readerChargeType.GetString(0))
-        End While
-
-        readerChargeType.Close()
-        readerChargeType = Nothing
-        DBCommand = Nothing
-
-        cmbPriceChargeTypes.Text = "All Charge Types"
-
     End Sub
 
     Private Sub chkBoosters_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles chkBoosters.CheckedChanged
